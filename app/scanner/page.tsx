@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Search,
   Sparkles,
+  Clock,
 } from "lucide-react";
 import dataStore from "@/lib/store";
 import { useTranslation } from "@/lib/useTranslation";
@@ -33,6 +34,7 @@ export default function ScannerPage() {
   const { t } = useTranslation();
   const [manualCode, setManualCode] = useState("");
   const [scannedProduct, setScannedProduct] = useState<ProductDTO | null>(null);
+  const [scanTime, setScanTime] = useState<Date | null>(null);
   const [searchFeedback, setSearchFeedback] = useState<string | null>(null);
   const [scanMode, setScanMode] = useState<"camera" | "hardware">("camera");
 
@@ -63,10 +65,12 @@ export default function ScannerPage() {
     const prod = dataStore.getProductByBarcodeOrSKU(code);
     if (prod) {
       setScannedProduct(prod);
+      setScanTime(new Date());
       setSearchFeedback(null);
       setActionMessage({ text: `Matched: ${prod.name}`, type: "success" });
     } else {
       setScannedProduct(null);
+      setScanTime(null);
       setSearchFeedback(`No product registered with Barcode or SKU "${code}"`);
       setActionMessage({ text: `Unrecognized Barcode "${code}"`, type: "error" });
     }
@@ -311,6 +315,18 @@ export default function ScannerPage() {
                   {t("label_barcode")}: <strong className="text-white">{scannedProduct.barcode || "—"}</strong> &bull; {t("label_category")}:{" "}
                   <strong className="text-white">{scannedProduct.categoryName || "—"}</strong>
                 </p>
+                {scanTime && (
+                  <div className="flex items-center gap-1.5 mt-3 bg-white/10 border border-white/15 rounded-xl px-3 py-1.5 w-fit">
+                    <Clock className="h-3 w-3 text-emerald-400 shrink-0" />
+                    <span className="text-[11px] font-semibold text-emerald-300">
+                      {scanTime.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                    </span>
+                    <span className="text-white/30 text-[11px]">·</span>
+                    <span className="text-[13px] font-bold text-white tracking-wide font-mono">
+                      {scanTime.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <CardContent className="p-6 space-y-6">
