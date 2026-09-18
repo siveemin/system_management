@@ -1,26 +1,236 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #edf2ed;
+  --foreground: #1e2e14;
+  --card: #ffffff;
+  --card-foreground: #1e2e14;
+  --popover: #ffffff;
+  --popover-foreground: #1e2e14;
+  --primary: #6b8a4e;
+  --primary-foreground: #ffffff;
+  --secondary: #dceadc;
+  --secondary-foreground: #1e2e14;
+  --muted: #edf2ed;
+  --muted-foreground: #5a7040;
+  --accent: #c85a7e;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #d4ddd4;
+  --input: #d4ddd4;
+  --ring: #6b8a4e;
+  --radius: 1rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.dark {
+  --background: #0f1a08;
+  --foreground: #e8f0e2;
+  --card: #1a2410;
+  --card-foreground: #e8f0e2;
+  --popover: #1a2410;
+  --popover-foreground: #e8f0e2;
+  --primary: #7aaa5c;
+  --primary-foreground: #0f1a08;
+  --secondary: #2a3d1a;
+  --secondary-foreground: #e8f0e2;
+  --muted: #1a2a10;
+  --muted-foreground: #8aaa6e;
+  --border: #2a3d20;
+  --input: #2a3d20;
+  --ring: #7aaa5c;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark body {
+  background-color: #0f1a08;
+  color: #e8f0e2;
+}
+
+* {
+  border-color: var(--border);
+  /* Remove blue flash on tap (iOS/Android) */
+  -webkit-tap-highlight-color: transparent;
+  /* Prevent text selection on double-tap */
+  -webkit-touch-callout: none;
+}
+
+/* Prevent 300ms tap delay on all interactive elements */
+a, button, input, select, textarea, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Minimum touch target size (44×44px per Apple HIG) */
+button, a {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Smooth touch scrolling */
+html, body, main {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Press/active feedback for touchable elements */
+button:active, a:active, [role="button"]:active {
+  opacity: 0.82;
+  transform: scale(0.97);
+  transition: transform 0.08s ease, opacity 0.08s ease;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #edf2ed;
+  color: #1e2e14;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  min-height: 100vh;
+  letter-spacing: -0.015em;
+}
+
+/* Sharp Diagonal Hatch Pattern for Light Backgrounds */
+.bg-stripe-pattern {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #18181b,
+    #18181b 3px,
+    #ffffff 3px,
+    #ffffff 6px
+  );
+  border: 1px solid #18181b;
+}
+
+.bg-stripe-orange {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #ff481f,
+    #ff481f 3px,
+    #ffffff 3px,
+    #ffffff 6px
+  );
+}
+
+/* Crisp Clean Card Shadows */
+.shadow-premium {
+  box-shadow: 0 4px 20px -2px rgba(18, 20, 29, 0.05), 0 1px 3px rgba(18, 20, 29, 0.03);
+}
+
+.shadow-pill {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ── Touch ripple effect ─────────────────────────────────────────────── */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+.ripple::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(107,138,78,0.18) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.ripple:active::after {
+  opacity: 1;
+  transition: opacity 0s;
+}
+
+/* ── Touch-friendly table rows ───────────────────────────────────────── */
+tbody tr {
+  min-height: 52px;
+}
+tbody td {
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+}
+
+/* ── Larger form inputs on mobile ────────────────────────────────────── */
+input, select, textarea {
+  font-size: 16px !important; /* prevents iOS auto-zoom on focus */
+  min-height: 44px;
+}
+
+/* ── Bottom nav safe area (iPhone notch) ─────────────────────────────── */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── BarcodeCameraScanner touch ──────────────────────────────────────── */
+#barcode-camera-scanner-view > div {
+  width: 100% !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+/* ── barcode scan-line animation ─────────────────────────────────────── */
+@keyframes scanline {
+  0%   { top: 0%; }
+  50%  { top: calc(100% - 2px); }
+  100% { top: 0%; }
+}
+
+/* ── html5-qrcode layout overrides ───────────────────────────────────── */
+#barcode-camera-scanner-view > div {
+  width: 100% !important;
+  padding: 0 !important;
+  border: none !important;
+}
+#barcode-camera-scanner-view video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 0.75rem !important;
+  display: block !important;
+}
+/* hide the tiny captured-frame thumbnail html5-qrcode adds */
+#barcode-camera-scanner-view img {
+  display: none !important;
+}
+/* scan-region overlay box */
+#barcode-camera-scanner-view #qr-shaded-region {
+  border-width: 0 !important;
+}
+#barcode-camera-scanner-view #qr-shaded-region div {
+  border-color: #0d9488 !important; /* teal-600 */
+  border-width: 3px !important;
+}
+
+/* Print styling for barcode & QR code label sheets */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-barcode-label,
+  #printable-barcode-label * {
+    visibility: visible;
+  }
+  #printable-barcode-label {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    background: white !important;
+    color: black !important;
+  }
 }
