@@ -48,7 +48,7 @@ export default function SalesOrdersPage() {
     e.preventDefault();
     const validItems = orderItems.filter((i) => i.productId && i.quantity > 0);
     if (!customerId || !warehouseId || validItems.length === 0) return;
-    dataStore.createSalesOrder({ customerId, warehouseId, orderDate, notes, items: validItems });
+    dataStore.createSalesOrder({ customerId, warehouseId, notes, items: validItems });
     setIsCreateModalOpen(false);
     setNotes("");
     setOrderItems([{ productId: "", quantity: 1, unitPrice: 0 }]);

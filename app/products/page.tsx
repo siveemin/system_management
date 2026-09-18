@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
-  PackagePlus, Search, Edit2, Package, CheckCircle2, AlertCircle,
+  PackagePlus, Search, Edit2, Package, CheckCircle2, AlertCircle, Camera, X,
 } from "lucide-react";
 import dataStore from "@/lib/store";
 import { useTranslation } from "@/lib/useTranslation";
@@ -17,6 +17,7 @@ const EMPTY_FORM = {
   name: "", sku: "", barcode: "", description: "", uom: "PCS",
   costPrice: 0, sellingPrice: 0, minStockLevel: 10, maxStockLevel: 500,
   categoryId: "", supplierId: "", status: "ACTIVE" as "ACTIVE" | "INACTIVE",
+  imageUrl: "",
 };
 
 export default function ProductsPage() {
@@ -32,6 +33,7 @@ export default function ProductsPage() {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [initStock, setInitStock] = useState<Record<string, number>>({});
   const [actionMsg, setActionMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const update = () => {
@@ -71,8 +73,17 @@ export default function ProductsPage() {
       uom: p.uom, costPrice: p.costPrice, sellingPrice: p.sellingPrice,
       minStockLevel: p.minStockLevel, maxStockLevel: p.maxStockLevel ?? 500,
       categoryId: p.categoryId ?? "", supplierId: p.supplierId ?? "", status: p.status,
+      imageUrl: p.imageUrl ?? "",
     });
     setEditProduct(p);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setForm((f) => ({ ...f, imageUrl: reader.result as string }));
+    reader.readAsDataURL(file);
   };
 
   const handleCreate = (e: React.FormEvent) => {
@@ -84,7 +95,7 @@ export default function ProductsPage() {
       ...form,
       categoryName: cat?.name ?? null,
       supplierName: sup?.name ?? null,
-      imageUrl: null,
+      imageUrl: form.imageUrl || null,
       qrCode: null,
       initialStockPerWarehouse: initStock,
     });
@@ -101,6 +112,7 @@ export default function ProductsPage() {
       ...form,
       categoryName: cat?.name ?? null,
       supplierName: sup?.name ?? null,
+      imageUrl: form.imageUrl || null,
     });
     setEditProduct(null);
     showMsg(t("page_products_updated"), "success");
@@ -125,6 +137,38 @@ export default function ProductsPage() {
 
   const ProductForm = ({ onSubmit, submitLabel }: { onSubmit: (e: React.FormEvent) => void; submitLabel: string }) => (
     <form onSubmit={onSubmit} className="space-y-4">
+
+      {/* Image Upload */}
+      <div className="flex items-center gap-4">
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          className="relative h-20 w-20 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer hover:border-[#6b8a4e] hover:bg-[#edf2ed] transition-colors overflow-hidden shrink-0"
+        >
+          {form.imageUrl ? (
+            <img src={form.imageUrl} alt="preview" className="h-full w-full object-cover rounded-2xl" />
+          ) : (
+            <Camera className="h-6 w-6 text-slate-400" />
+          )}
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Product Photo</span>
+          <span className="text-[11px] text-slate-400">JPG, PNG or WEBP · Max 2MB</span>
+          <div className="flex gap-2 mt-1">
+            <button type="button" onClick={() => fileInputRef.current?.click()}
+              className="text-[11px] font-semibold text-[#6b8a4e] hover:underline">
+              {form.imageUrl ? "Change photo" : "Upload photo"}
+            </button>
+            {form.imageUrl && (
+              <button type="button" onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
+                className="text-[11px] font-semibold text-rose-500 hover:underline flex items-center gap-0.5">
+                <X className="h-3 w-3" /> Remove
+              </button>
+            )}
+          </div>
+        </div>
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         {field("name", `${t("label_name")} *`)}
         {field("sku", `${t("label_sku")} *`)}
@@ -237,7 +281,6 @@ export default function ProductsPage() {
                 <th className="text-left py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">{t("page_products_col_product")}</th>
                 <th className="text-left py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">{t("page_products_col_sku")}</th>
                 <th className="text-left py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">{t("page_products_col_category")}</th>
-                <th className="text-right py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">{t("page_products_col_cost")}</th>
                 <th className="text-right py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">{t("page_products_col_price")}</th>
                 <th className="text-right py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">{t("page_products_col_stock")}</th>
                 <th className="text-center py-3 px-4 font-semibold text-slate-500 dark:text-slate-400">{t("page_products_col_status")}</th>
@@ -247,18 +290,28 @@ export default function ProductsPage() {
             <tbody>
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-xs text-slate-400">{t("page_products_none")}</td>
+                  <td colSpan={7} className="py-12 text-center text-xs text-slate-400">{t("page_products_none")}</td>
                 </tr>
               )}
               {filtered.map((p) => (
                 <tr key={p.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                   <td className="py-3.5 px-4">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100">{p.name}</div>
-                    {p.supplierName && <div className="text-slate-400 text-[10px] mt-0.5">{p.supplierName}</div>}
+                    <div className="flex items-center gap-3">
+                      {p.imageUrl ? (
+                        <img src={p.imageUrl} alt={p.name} className="h-9 w-9 rounded-xl object-cover border border-slate-200 shrink-0" />
+                      ) : (
+                        <div className="h-9 w-9 rounded-xl bg-[#6b8a4e]/10 border border-slate-200 flex items-center justify-center text-[#6b8a4e] text-xs font-black shrink-0">
+                          {p.name.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">{p.name}</div>
+                        {p.supplierName && <div className="text-slate-400 text-[10px] mt-0.5">{p.supplierName}</div>}
+                      </div>
+                    </div>
                   </td>
                   <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">{p.sku}</td>
                   <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">{p.categoryName ?? "—"}</td>
-                  <td className="py-3.5 px-4 text-right text-slate-600 dark:text-slate-300">{formatCurrency(p.costPrice)}</td>
                   <td className="py-3.5 px-4 text-right font-bold text-slate-900 dark:text-slate-100">{formatCurrency(p.sellingPrice)}</td>
                   <td className="py-3.5 px-4 text-right">
                     <span className={`font-bold ${p.totalStock <= p.minStockLevel ? "text-red-600" : "text-emerald-600"}`}>

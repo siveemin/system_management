@@ -56,11 +56,18 @@ class InventoryDataStore {
   private currency: CurrencyCode = "USD";
   private language: Language = "en";
   private listeners: Set<() => void> = new Set();
+  private hydrated = false;
 
   constructor() {
-    if (typeof window !== "undefined") {
-      this.loadFromLocalStorage();
-    }
+    // Do NOT load localStorage here — the constructor runs during SSR too.
+    // Hydration happens client-side via hydrateFromLocalStorage() called in useEffect.
+  }
+
+  public hydrateFromLocalStorage() {
+    if (this.hydrated || typeof window === "undefined") return;
+    this.hydrated = true;
+    this.loadFromLocalStorage();
+    this.notify();
   }
 
   private saveToLocalStorage() {

@@ -53,22 +53,26 @@ export default function StockTransfersPage() {
       setActionMsg({ text: t("msg_diff_warehouses"), type: "error" });
       return;
     }
-    const res = dataStore.createStockTransfer({ fromWarehouseId, toWarehouseId, productId, quantity, notes });
-    if (res.success) {
-      setIsCreateModalOpen(false);
-      setNotes("");
-      setQuantity(1);
-      setActionMsg({ text: t("msg_transfer_done"), type: "success" });
-      setTimeout(() => setActionMsg(null), 3000);
-    } else {
-      setActionMsg({ text: res.error || t("msg_failed"), type: "error" });
-    }
+    dataStore.createStockTransfer({
+      sourceWarehouseId: fromWarehouseId,
+      destinationWarehouseId: toWarehouseId,
+      notes,
+      items: [{ productId, requestedQuantity: quantity }],
+    });
+    setIsCreateModalOpen(false);
+    setNotes("");
+    setQuantity(1);
+    setActionMsg({ text: t("msg_transfer_done"), type: "success" });
+    setTimeout(() => setActionMsg(null), 3000);
   };
 
-  const filtered = transfers.filter((t) => {
+  const filtered = transfers.filter((tr) => {
     const q = searchTerm.toLowerCase();
-    return t.transferNumber.toLowerCase().includes(q) || t.productName.toLowerCase().includes(q) ||
-      t.fromWarehouseName.toLowerCase().includes(q) || t.toWarehouseName.toLowerCase().includes(q);
+    const firstItem = tr.items[0];
+    return tr.transferNumber.toLowerCase().includes(q) ||
+      (firstItem?.productName ?? "").toLowerCase().includes(q) ||
+      tr.sourceWarehouseName.toLowerCase().includes(q) ||
+      tr.destinationWarehouseName.toLowerCase().includes(q);
   });
 
   return (
@@ -122,29 +126,29 @@ export default function StockTransfersPage() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={8} className="py-12 text-center text-slate-400">{t("no_st_records")}</td></tr>
               ) : (
-                filtered.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-4 px-6 font-mono font-bold text-[#18181B]">{t.transferNumber}</td>
+                filtered.map((tr) => (
+                  <tr key={tr.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-4 px-6 font-mono font-bold text-[#18181B]">{tr.transferNumber}</td>
                     <td className="py-4 px-6">
-                      <div className="font-bold text-[#18181B]">{t.productName}</div>
-                      <div className="font-mono text-[10px] font-bold text-[#6b8a4e]">{t.productSku}</div>
+                      <div className="font-bold text-[#18181B]">{tr.items[0]?.productName ?? "—"}</div>
+                      <div className="font-mono text-[10px] font-bold text-[#6b8a4e]">{tr.items[0]?.productSku ?? ""}</div>
                     </td>
                     <td className="py-4 px-6">
                       <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
                         <span className="w-2 h-2 rounded-full bg-rose-400 inline-block"></span>
-                        {t.fromWarehouseName}
+                        {tr.sourceWarehouseName}
                       </span>
                     </td>
                     <td className="py-4 px-6">
                       <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
-                        {t.toWarehouseName}
+                        {tr.destinationWarehouseName}
                       </span>
                     </td>
-                    <td className="py-4 px-6 font-extrabold text-[#18181B]">{t.quantity} units</td>
-                    <td className="py-4 px-6"><StatusBadge status={t.status} /></td>
-                    <td className="py-4 px-6 text-slate-500 max-w-[160px] line-clamp-1">{t.notes || "-"}</td>
-                    <td className="py-4 px-6 text-slate-400 text-[10px] whitespace-nowrap text-right">{formatDateTime(t.createdAt)}</td>
+                    <td className="py-4 px-6 font-extrabold text-[#18181B]">{tr.items[0]?.requestedQuantity ?? 0} units</td>
+                    <td className="py-4 px-6"><StatusBadge status={tr.status} /></td>
+                    <td className="py-4 px-6 text-slate-500 max-w-[160px] line-clamp-1">{tr.notes || "-"}</td>
+                    <td className="py-4 px-6 text-slate-400 text-[10px] whitespace-nowrap text-right">{formatDateTime(tr.createdAt)}</td>
                   </tr>
                 ))
               )}

@@ -131,7 +131,7 @@ export default function ReportsPage() {
             <BarChart data={topProductsByValue} layout="vertical" margin={{ left: 0, right: 16 }}>
               <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(v)} width={80} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={120} />
-              <Tooltip formatter={(v: number) => formatCurrency(v)} />
+              <Tooltip formatter={(v) => formatCurrency(Number(v))} />
               <Bar dataKey="value" fill="#0d9488" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -146,11 +146,11 @@ export default function ReportsPage() {
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie data={stockByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                   labelLine={false}>
                   {stockByCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                <Tooltip formatter={(v) => formatCurrency(Number(v))} />
                 <Legend iconSize={10} wrapperStyle={{ fontSize: 10 }} />
               </PieChart>
             </ResponsiveContainer>

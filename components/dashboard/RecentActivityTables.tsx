@@ -25,12 +25,34 @@ export function RecentActivityTables({
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"products" | "orders" | "transactions">("products");
 
-  const salesItems = [
-    { name: "Jacquemus Largo",          sku: "SKU-APP-1029", img: "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=100&auto=format&fit=crop&q=80", stock: 118, oldPrice: 114.0,  sale: "5%",  newPrice: 108.3,  itemsSold: 294 },
-    { name: "Aries x Umbro Centenary",  sku: "SKU-APP-2044", img: "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=100&auto=format&fit=crop&q=80", stock: 328, oldPrice: 140.9,  sale: "8%",  newPrice: 129.6,  itemsSold: 294 },
-    { name: "There Was One",             sku: "SKU-APP-3091", img: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=100&auto=format&fit=crop&q=80", stock: 118, oldPrice: 311.0,  sale: "15%", newPrice: 264.35, itemsSold: 69  },
-    { name: "Sleeved cardigan",          sku: "SKU-APP-4102", img: "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=100&auto=format&fit=crop&q=80", stock: 26,  oldPrice: 55.0,   sale: "5%",  newPrice: 52.25,  itemsSold: 32  },
+  const AVATAR_COLORS = [
+    { bg: "bg-violet-100", text: "text-violet-700", border: "border-violet-200" },
+    { bg: "bg-blue-100",   text: "text-blue-700",   border: "border-blue-200"   },
+    { bg: "bg-emerald-100",text: "text-emerald-700",border: "border-emerald-200"},
+    { bg: "bg-amber-100",  text: "text-amber-700",  border: "border-amber-200"  },
+    { bg: "bg-rose-100",   text: "text-rose-700",   border: "border-rose-200"   },
+    { bg: "bg-cyan-100",   text: "text-cyan-700",   border: "border-cyan-200"   },
+    { bg: "bg-orange-100", text: "text-orange-700", border: "border-orange-200" },
+    { bg: "bg-pink-100",   text: "text-pink-700",   border: "border-pink-200"   },
   ];
+
+  const getProductColor = (name: string) => {
+    const idx = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % AVATAR_COLORS.length;
+    return AVATAR_COLORS[idx];
+  };
+
+  const getInitials = (name: string) => {
+    const words = name.trim().split(/\s+/);
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  };
+
+  const topProducts = products.slice(0, 5).map((p) => {
+    const margin = p.sellingPrice > 0
+      ? Math.round(((p.sellingPrice - p.costPrice) / p.sellingPrice) * 100)
+      : 0;
+    return { ...p, margin };
+  });
 
   return (
     <div className="border border-slate-200/80 bg-white rounded-[28px] shadow-premium overflow-hidden">
@@ -67,31 +89,42 @@ export function RecentActivityTables({
               <tr className="border-b border-slate-100 text-slate-400 font-medium">
                 <th className="pb-3 font-normal">{t("table_col_item")}</th>
                 <th className="pb-3 font-normal text-center">{t("label_stock")}</th>
-                <th className="pb-3 font-normal text-right">{t("table_col_old_price")}</th>
-                <th className="pb-3 font-normal text-center">{t("table_col_sale")}</th>
-                <th className="pb-3 font-normal text-right">{t("table_col_new_price")}</th>
-                <th className="pb-3 font-normal text-right">{t("table_col_items_sold")}</th>
+                <th className="pb-3 font-normal text-right">{t("label_cost")}</th>
+                <th className="pb-3 font-normal text-center">{t("label_margin")}</th>
+                <th className="pb-3 font-normal text-right">{t("label_price")}</th>
+                <th className="pb-3 font-normal text-right">{t("label_total_stock")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {salesItems.map((item) => (
-                <tr key={item.name} className="hover:bg-slate-50/70 transition-colors">
+              {topProducts.length === 0 ? (
+                <tr><td colSpan={6} className="py-8 text-center text-slate-400 text-xs">No products found</td></tr>
+              ) : topProducts.map((item) => (
+                <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
                   <td className="py-3.5">
                     <div className="flex items-center gap-3">
-                      <img src={item.img} alt={item.name} className="h-10 w-10 rounded-xl object-cover border border-slate-200 bg-slate-50" />
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.name} className="h-10 w-10 rounded-xl object-cover border border-slate-200 shrink-0" />
+                      ) : (() => {
+                        const color = getProductColor(item.name);
+                        return (
+                          <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-xs font-black border ${color.bg} ${color.text} ${color.border} shrink-0 tracking-tight`}>
+                            {getInitials(item.name)}
+                          </div>
+                        );
+                      })()}
                       <div>
                         <span className="font-bold text-[#18181B] block">{item.name}</span>
                         <span className="text-[10px] text-slate-400 font-mono">{item.sku}</span>
                       </div>
                     </div>
                   </td>
-                  <td className="py-3.5 font-bold text-slate-800 text-center">{item.stock}</td>
-                  <td className="py-3.5 text-slate-400 text-right line-through font-medium">{formatCurrency(item.oldPrice)}</td>
+                  <td className="py-3.5 font-bold text-slate-800 text-center">{item.totalAvailable}</td>
+                  <td className="py-3.5 text-slate-400 text-right line-through font-medium">{formatCurrency(item.costPrice)}</td>
                   <td className="py-3.5 text-center">
-                    <span className="bg-emerald-100 text-emerald-700 font-extrabold text-[11px] px-2.5 py-0.5 rounded-full">{item.sale}</span>
+                    <span className="bg-emerald-100 text-emerald-700 font-extrabold text-[11px] px-2.5 py-0.5 rounded-full">{item.margin}%</span>
                   </td>
-                  <td className="py-3.5 font-bold text-[#18181B] text-right">{formatCurrency(item.newPrice)}</td>
-                  <td className="py-3.5 font-bold text-slate-800 text-right">{item.itemsSold}</td>
+                  <td className="py-3.5 font-bold text-[#18181B] text-right">{formatCurrency(item.sellingPrice)}</td>
+                  <td className="py-3.5 font-bold text-slate-800 text-right">{item.totalStock}</td>
                 </tr>
               ))}
             </tbody>

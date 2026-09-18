@@ -5,6 +5,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { DrawerMenu } from "@/components/layout/DrawerMenu";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { SwipeHandler } from "@/components/layout/SwipeHandler";
+import { StoreHydrator } from "@/components/StoreHydrator";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -20,8 +21,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
-      <body className={`${inter.variable} font-sans antialiased min-h-full bg-[#edf2ed] text-[#1e2e14]`}>
+    <html lang="en" className="h-full" suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans antialiased min-h-full bg-[#edf2ed] text-[#1e2e14]`} suppressHydrationWarning>
+        {/* Hydrate store from localStorage after first render */}
+        <StoreHydrator />
         {/* Swipe gesture handler (touch only) */}
         <SwipeHandler />
         {/* Slide-out drawer */}
