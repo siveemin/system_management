@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import {
-  PackagePlus, Search, Edit2, Package, CheckCircle2, AlertCircle, Camera, X,
+  PackagePlus, Search, Edit2, Package, CheckCircle2, AlertCircle, Camera, X, Barcode,
 } from "lucide-react";
 import dataStore from "@/lib/store";
 import { useTranslation } from "@/lib/useTranslation";
@@ -12,6 +12,7 @@ import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/badge";
 import { formatCurrency, generateSKU, generateBarcode } from "@/lib/utils";
+import { PrintLabelModal } from "@/components/barcode/PrintLabelModal";
 
 const EMPTY_FORM = {
   name: "", sku: "", barcode: "", description: "", uom: "PCS",
@@ -34,6 +35,7 @@ export default function ProductsPage() {
   const [initStock, setInitStock] = useState<Record<string, number>>({});
   const [actionMsg, setActionMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [printProduct, setPrintProduct] = useState<ProductDTO | null>(null);
 
   useEffect(() => {
     const update = () => {
@@ -323,10 +325,17 @@ export default function ProductsPage() {
                     <StatusBadge status={p.status} />
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <button onClick={() => openEdit(p)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-[#6b8a4e] hover:bg-[#edf2ed] dark:hover:bg-[#1a2a10] transition-colors">
-                      <Edit2 className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => setPrintProduct(p)}
+                        title="Print Barcode Label"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors">
+                        <Barcode className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => openEdit(p)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-[#6b8a4e] hover:bg-[#edf2ed] dark:hover:bg-[#1a2a10] transition-colors">
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -346,6 +355,13 @@ export default function ProductsPage() {
         description={editProduct?.sku} size="lg">
         <ProductForm onSubmit={handleEdit} submitLabel={t("page_products_save_btn")} />
       </Modal>
+
+      {/* Barcode / Print Label Modal */}
+      <PrintLabelModal
+        product={printProduct}
+        isOpen={!!printProduct}
+        onClose={() => setPrintProduct(null)}
+      />
     </div>
   );
 }
