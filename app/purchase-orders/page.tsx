@@ -52,7 +52,10 @@ export default function PurchaseOrdersPage() {
     e.preventDefault();
     const validItems = orderItems.filter((i) => i.productId && i.quantity > 0 && i.unitPrice >= 0);
     if (!supplierId || !warehouseId || validItems.length === 0) return;
-    dataStore.createPurchaseOrder({ supplierId, warehouseId, orderDate, notes, items: validItems });
+    dataStore.createPurchaseOrder({
+      supplierId, warehouseId, notes,
+      items: validItems.map((i) => ({ productId: i.productId, quantity: i.quantity, unitCost: i.unitPrice })),
+    });
     setIsCreateModalOpen(false);
     setNotes("");
     setOrderItems([{ productId: "", quantity: 1, unitPrice: 0 }]);
@@ -61,11 +64,10 @@ export default function PurchaseOrdersPage() {
   const handleReceive = (e: React.FormEvent) => {
     e.preventDefault();
     if (!receivePO) return;
-    const items = Object.entries(receiveQuantities)
-      .filter(([, qty]) => qty > 0)
-      .map(([itemId, qty]) => ({ purchaseOrderItemId: itemId, receivedQuantity: qty }));
-    if (items.length === 0) { setReceiveMsg({ text: t("msg_enter_qty"), type: "error" }); return; }
-    const res = dataStore.receivePurchaseOrderItems(receivePO.id, items);
+    const receivedMap: Record<string, number> = {};
+    Object.entries(receiveQuantities).forEach(([itemId, qty]) => { if (qty > 0) receivedMap[itemId] = qty; });
+    if (Object.keys(receivedMap).length === 0) { setReceiveMsg({ text: t("msg_enter_qty"), type: "error" }); return; }
+    const res = dataStore.receivePurchaseOrderItems(receivePO.id, receivedMap);
     if (res.success) {
       setReceiveMsg({ text: t("msg_stock_received"), type: "success" });
       setTimeout(() => { setIsReceiveModalOpen(false); setReceiveMsg(null); setReceiveQuantities({}); }, 1500);
@@ -142,13 +144,13 @@ export default function PurchaseOrdersPage() {
                           </button>
                         )}
                         {po.status === "DRAFT" && (
-                          <button onClick={() => dataStore.submitPurchaseOrder(po.id)}
+                          <button onClick={() => dataStore.updatePurchaseOrderStatus(po.id, "SUBMITTED")}
                             className="px-3 py-1 bg-[#18181B] hover:bg-[#27272A] text-white text-[11px] font-bold rounded-xl cursor-pointer transition-colors">
                             Submit
                           </button>
                         )}
                         {po.status === "SUBMITTED" && (
-                          <button onClick={() => dataStore.approvePurchaseOrder(po.id)}
+                          <button onClick={() => dataStore.updatePurchaseOrderStatus(po.id, "APPROVED")}
                             className="px-3 py-1 bg-[#18181B] hover:bg-[#27272A] text-white text-[11px] font-bold rounded-xl cursor-pointer transition-colors">
                             Approve
                           </button>
