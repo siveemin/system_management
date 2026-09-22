@@ -208,6 +208,7 @@ class InventoryDataStore {
 
   public getProductByBarcodeOrSKU(code: string): ProductDTO | undefined {
     const clean = code.trim().toUpperCase();
+    if (!clean) return undefined;
 
     // QR codes on printed labels encode as "PROD:SKU:BARCODE"
     if (clean.startsWith("PROD:")) {
@@ -221,11 +222,18 @@ class InventoryDataStore {
       );
     }
 
-    return this.products.find(
+    // Exact match: barcode, SKU, or qrCode
+    const exact = this.products.find(
       (p) =>
         p.sku.trim().toUpperCase() === clean ||
         (p.barcode && p.barcode.trim().toUpperCase() === clean) ||
         (p.qrCode && p.qrCode.trim().toUpperCase().includes(clean))
+    );
+    if (exact) return exact;
+
+    // Fallback: partial name match (lets users type product name on scanner)
+    return this.products.find((p) =>
+      p.name.toLowerCase().includes(clean.toLowerCase())
     );
   }
 

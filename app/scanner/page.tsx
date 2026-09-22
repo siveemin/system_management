@@ -110,7 +110,7 @@ export default function ScannerPage() {
       setScanTime(null);
       setSearchFeedback(code);
       setQuickCreate({ barcode: code, name: "" });
-      setActionMessage({ text: `Barcode "${code}" not found — register it below`, type: "error" });
+      setActionMessage({ text: `"${code}" not found — fill the form below to add it`, type: "error" });
     }
   };
 
@@ -314,9 +314,14 @@ export default function ScannerPage() {
 
                 {/* Sample Test Barcodes Buttons for Instant Demo */}
                 <div className="pt-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1.5">
-                    {t("scanner_demo_picks")}:
-                  </span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      {t("scanner_demo_picks")}:
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {products.length} products loaded
+                    </span>
+                  </div>
                   <div className="flex flex-wrap gap-1.5">
                     {products.map((p) => (
                       <button
