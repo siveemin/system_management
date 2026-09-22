@@ -207,7 +207,8 @@ class InventoryDataStore {
   }
 
   public getProductByBarcodeOrSKU(code: string): ProductDTO | undefined {
-    const clean = code.trim().toUpperCase();
+    // Strip invisible control chars (GS1 separators, CR, LF, tab) then trim
+    const clean = code.replace(/[\x00-\x1f\x7f]/g, "").trim().toUpperCase();
     if (!clean) return undefined;
 
     // QR codes on printed labels encode as "PROD:SKU:BARCODE"
@@ -222,14 +223,27 @@ class InventoryDataStore {
       );
     }
 
-    // Exact match: barcode, SKU, or qrCode
-    const exact = this.products.find(
-      (p) =>
-        p.sku.trim().toUpperCase() === clean ||
-        (p.barcode && p.barcode.trim().toUpperCase() === clean) ||
-        (p.qrCode && p.qrCode.trim().toUpperCase().includes(clean))
-    );
-    if (exact) return exact;
+    // Build candidate set: normalize EAN-13 ↔ UPC-A (leading zero)
+    const candidates = new Set([clean]);
+    if (/^\d{13}$/.test(clean)) {
+      candidates.add(clean.slice(1));          // EAN-13 → try without leading digit
+      if (clean.startsWith("0")) {
+        candidates.add(clean.slice(1));        // EAN-13 (country 0) → UPC-A
+      }
+    }
+    if (/^\d{12}$/.test(clean)) {
+      candidates.add("0" + clean);             // UPC-A → EAN-13
+    }
+
+    for (const c of candidates) {
+      const found = this.products.find(
+        (p) =>
+          p.sku.trim().toUpperCase() === c ||
+          (p.barcode && p.barcode.trim().toUpperCase() === c) ||
+          (p.qrCode && p.qrCode.trim().toUpperCase().includes(c))
+      );
+      if (found) return found;
+    }
 
     // Fallback: partial name match (lets users type product name on scanner)
     return this.products.find((p) =>

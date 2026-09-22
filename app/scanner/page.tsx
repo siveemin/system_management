@@ -151,18 +151,22 @@ export default function ScannerPage() {
 
   const handleLookup = (code: string) => {
     if (!code) return;
-    const prod = dataStore.getProductByBarcodeOrSKU(code);
+    // Strip invisible control chars before lookup (same as store does internally)
+    const rawDisplay = code.replace(/[\x00-\x1f\x7f]/g, "").trim();
+    if (!rawDisplay) return;
+    const prod = dataStore.getProductByBarcodeOrSKU(rawDisplay);
     if (prod) {
       setScannedProduct(prod);
       setScanTime(new Date());
       setSearchFeedback(null);
-      setActionMessage({ text: `Matched: ${prod.name}`, type: "success" });
+      setQuickCreate(null);
+      setActionMessage({ text: `✓ ${prod.name} · scanned: ${rawDisplay}`, type: "success" });
     } else {
       setScannedProduct(null);
       setScanTime(null);
-      setSearchFeedback(code);
-      setQuickCreate({ barcode: code, name: "" });
-      setActionMessage({ text: `"${code}" not found — fill the form below to add it`, type: "error" });
+      setSearchFeedback(rawDisplay);
+      setQuickCreate({ barcode: rawDisplay, name: "" });
+      setActionMessage({ text: `Not found: "${rawDisplay}" — register it below`, type: "error" });
     }
   };
 
@@ -372,6 +376,14 @@ export default function ScannerPage() {
                     <Search className="h-4 w-4" />
                   </Button>
                 </div>
+
+                {/* Last scanned raw value debug strip */}
+                {searchFeedback && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-[11px]">
+                    <span className="text-rose-500 font-bold shrink-0">Scanned:</span>
+                    <span className="font-mono text-rose-700 dark:text-rose-300 break-all">{searchFeedback}</span>
+                  </div>
+                )}
 
                 {/* Sample Test Barcodes Buttons for Instant Demo */}
                 <div className="pt-2">
