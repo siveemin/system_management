@@ -38,6 +38,8 @@ export default function ProductsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [printProduct, setPrintProduct] = useState<ProductDTO | null>(null);
   const [scanBarcodeMode, setScanBarcodeMode] = useState(false);
+  const [quickCatOpen, setQuickCatOpen] = useState(false);
+  const [quickCatName, setQuickCatName] = useState("");
 
   useEffect(() => {
     const update = () => {
@@ -216,7 +218,14 @@ export default function ProductsPage() {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">{t("label_category")}</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t("label_category")}</label>
+            <button type="button"
+              onClick={() => { setQuickCatName(""); setQuickCatOpen(true); }}
+              className="text-[11px] font-bold text-[#6b8a4e] hover:underline flex items-center gap-0.5">
+              + New
+            </button>
+          </div>
           <select value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
             className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-800 dark:text-slate-200">
             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -398,6 +407,36 @@ export default function ProductsPage() {
         isOpen={!!printProduct}
         onClose={() => setPrintProduct(null)}
       />
+
+      {/* Quick-create category from product form */}
+      <Modal isOpen={quickCatOpen} onClose={() => setQuickCatOpen(false)}
+        title={t("page_categories_create_title")} size="sm">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          if (!quickCatName.trim()) return;
+          const newCat = dataStore.createCategory({ name: quickCatName.trim() });
+          setForm((f) => ({ ...f, categoryId: newCat.id }));
+          setQuickCatOpen(false);
+        }} className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+              {t("label_name")} *
+            </label>
+            <Input
+              value={quickCatName}
+              onChange={(e) => setQuickCatName(e.target.value)}
+              placeholder="e.g. Electronics, Clothing…"
+              required
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" onClick={() => setQuickCatOpen(false)}>{t("btn_cancel")}</Button>
+            <Button type="submit" className="bg-[#6b8a4e] hover:bg-[#5a7840] text-white">
+              {t("page_categories_create_btn")}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

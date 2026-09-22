@@ -152,7 +152,8 @@ export default function CategoriesPage() {
             )}
             {categories.map((cat) => (
               <tr key={cat.id}
-                className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
+                onClick={() => openEdit(cat)}>
                 <td className="py-3.5 px-4">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-xl bg-[#6b8a4e]/10 flex items-center justify-center text-[#6b8a4e] font-black text-xs shrink-0">
@@ -170,19 +171,19 @@ export default function CategoriesPage() {
                 <td className="py-3.5 px-4 text-center">
                   <span className="font-bold text-slate-900 dark:text-slate-100">{cat.productCount ?? 0}</span>
                 </td>
-                <td className="py-3.5 px-4 text-right">
-                  <div className="flex items-center justify-end gap-1">
+                <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-2">
                     <button
-                      onClick={() => openEdit(cat)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-[#6b8a4e] hover:bg-[#edf2ed] dark:hover:bg-[#1a2a10] transition-colors"
+                      onClick={(e) => { e.stopPropagation(); openEdit(cat); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-[#6b8a4e] bg-[#edf2ed] dark:bg-[#1a2a10] hover:bg-[#d4e6c3] dark:hover:bg-[#2a3a1a] transition-colors"
                     >
-                      <Edit2 className="h-3.5 w-3.5" />
+                      <Edit2 className="h-3 w-3" /> {t("btn_edit")}
                     </button>
                     <button
-                      onClick={() => handleDelete(cat)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                      onClick={(e) => { e.stopPropagation(); handleDelete(cat); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-3 w-3" /> {t("btn_delete")}
                     </button>
                   </div>
                 </td>
