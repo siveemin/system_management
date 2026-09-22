@@ -181,13 +181,6 @@ input, select, textarea {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* ── BarcodeCameraScanner touch ──────────────────────────────────────── */
-#barcode-camera-scanner-view > div {
-  width: 100% !important;
-  padding: 0 !important;
-  border: none !important;
-}
-
 /* ── barcode scan-line animation ─────────────────────────────────────── */
 @keyframes scanline {
   0%   { top: 0%; }
@@ -196,29 +189,31 @@ input, select, textarea {
 }
 
 /* ── html5-qrcode layout overrides ───────────────────────────────────── */
-#barcode-camera-scanner-view > div {
+/* Target all scanner containers (dynamic IDs start with bcs-) */
+[id^="bcs-"] > div {
   width: 100% !important;
   padding: 0 !important;
   border: none !important;
+  background: transparent !important;
 }
-#barcode-camera-scanner-view video {
+[id^="bcs-"] video {
   width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  border-radius: 0.75rem !important;
+  max-width: 100% !important;
   display: block !important;
+  object-fit: cover !important;
 }
-/* hide the tiny captured-frame thumbnail html5-qrcode adds */
-#barcode-camera-scanner-view img {
+/* Hide the captured-frame thumbnail html5-qrcode adds */
+[id^="bcs-"] img {
   display: none !important;
 }
-/* scan-region overlay box */
-#barcode-camera-scanner-view #qr-shaded-region {
-  border-width: 0 !important;
+/* Hide html5-qrcode's own shaded scan-region — we render our own overlay */
+[id^="bcs-"] #qr-shaded-region {
+  display: none !important;
 }
-#barcode-camera-scanner-view #qr-shaded-region div {
-  border-color: #0d9488 !important; /* teal-600 */
-  border-width: 3px !important;
+/* Hide html5-qrcode's dashboard / status text */
+[id^="bcs-"] [id$="__dashboard"],
+[id^="bcs-"] [id$="__status_span"] {
+  display: none !important;
 }
 
 /* Print styling for barcode & QR code label sheets */
