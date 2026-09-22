@@ -88,6 +88,13 @@ body {
   letter-spacing: -0.015em;
 }
 
+/* Khmer OS Battambang font — applied when language is set to ខ្មែរ */
+.lang-km, .lang-km * {
+  font-family: var(--font-khmer), 'Battambang', sans-serif !important;
+  letter-spacing: 0;
+  line-height: 1.8;
+}
+
 /* Sharp Diagonal Hatch Pattern for Light Backgrounds */
 .bg-stripe-pattern {
   background-image: repeating-linear-gradient(
