@@ -17,6 +17,7 @@ import {
   Search,
   Sparkles,
   Clock,
+  PackagePlus,
 } from "lucide-react";
 import dataStore from "@/lib/store";
 import { useTranslation } from "@/lib/useTranslation";
@@ -26,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { StatusBadge } from "@/components/ui/badge";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, generateSKU, generateBarcode } from "@/lib/utils";
 import { BarcodeCameraScanner } from "@/components/scanner/BarcodeCameraScanner";
 import { HardwareScanListener } from "@/components/scanner/HardwareScanListener";
 
@@ -48,6 +49,40 @@ export default function ScannerPage() {
   const [actionNotes, setActionNotes] = useState("");
   const [destWarehouseId, setDestWarehouseId] = useState("");
   const [actionMessage, setActionMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+  // Quick-create new product from unknown barcode
+  const [quickCreate, setQuickCreate] = useState<{ barcode: string; name: string } | null>(null);
+
+  const handleQuickCreate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickCreate?.name.trim()) return;
+    const categories = dataStore.getCategories();
+    const suppliers = dataStore.getSuppliers();
+    const cat = categories[0];
+    const sup = suppliers[0];
+    const newProduct = dataStore.createProduct({
+      name: quickCreate.name.trim(),
+      sku: generateSKU("SKU", cat?.name ?? ""),
+      barcode: quickCreate.barcode,
+      description: "",
+      uom: "PCS",
+      costPrice: 0,
+      sellingPrice: 0,
+      minStockLevel: 10,
+      maxStockLevel: 500,
+      categoryId: cat?.id ?? "",
+      categoryName: cat?.name ?? null,
+      supplierId: sup?.id ?? "",
+      supplierName: sup?.name ?? null,
+      status: "ACTIVE",
+      imageUrl: null,
+      qrCode: null,
+    });
+    setQuickCreate(null);
+    setScannedProduct(newProduct);
+    setScanTime(new Date());
+    setActionMessage({ text: `Created & matched: ${newProduct.name}`, type: "success" });
+  };
 
   useEffect(() => {
     const update = () => {
@@ -73,8 +108,9 @@ export default function ScannerPage() {
     } else {
       setScannedProduct(null);
       setScanTime(null);
-      setSearchFeedback(`No product registered with Barcode or SKU "${code}"`);
-      setActionMessage({ text: `Unrecognized Barcode "${code}"`, type: "error" });
+      setSearchFeedback(code);
+      setQuickCreate({ barcode: code, name: "" });
+      setActionMessage({ text: `Barcode "${code}" not found — register it below`, type: "error" });
     }
   };
 
@@ -408,6 +444,57 @@ export default function ScannerPage() {
                     </Button>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          ) : quickCreate ? (
+            <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 rounded-[26px] overflow-hidden">
+              <div className="bg-amber-500 text-white px-6 py-4 flex items-center gap-3">
+                <PackagePlus className="h-5 w-5 shrink-0" />
+                <div>
+                  <div className="text-sm font-bold">New Barcode Detected</div>
+                  <div className="text-[11px] font-mono opacity-80">{quickCreate.barcode}</div>
+                </div>
+              </div>
+              <CardContent className="p-6">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                  This barcode is not registered. Enter a product name to add it instantly.
+                </p>
+                <form onSubmit={handleQuickCreate} className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Product Name *
+                    </label>
+                    <Input
+                      placeholder="e.g. Rice 25kg, Motor Oil 1L…"
+                      value={quickCreate.name}
+                      onChange={(e) => setQuickCreate({ ...quickCreate, name: e.target.value })}
+                      autoFocus
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Barcode
+                    </label>
+                    <Input
+                      value={quickCreate.barcode}
+                      onChange={(e) => setQuickCreate({ ...quickCreate, barcode: e.target.value })}
+                      className="rounded-xl font-mono text-xs"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button type="submit"
+                      disabled={!quickCreate.name.trim()}
+                      className="flex-1 bg-amber-500 hover:bg-amber-600 text-white rounded-xl gap-2">
+                      <PackagePlus className="h-4 w-4" /> Add Product
+                    </Button>
+                    <Button type="button" variant="outline"
+                      onClick={() => setQuickCreate(null)}
+                      className="rounded-xl">
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
               </CardContent>
             </Card>
           ) : (
