@@ -56,10 +56,10 @@ export default function ScannerPage() {
   const handleQuickCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickCreate?.name.trim()) return;
-    const categories = dataStore.getCategories();
-    const suppliers = dataStore.getSuppliers();
-    const cat = categories[0];
-    const sup = suppliers[0];
+    const allCats = dataStore.getCategories();
+    const allSups = dataStore.getSuppliers();
+    const cat = allCats[0];
+    const sup = allSups[0];
     const newProduct = dataStore.createProduct({
       name: quickCreate.name.trim(),
       sku: generateSKU("SKU", cat?.name ?? ""),
@@ -82,6 +82,58 @@ export default function ScannerPage() {
     setScannedProduct(newProduct);
     setScanTime(new Date());
     setActionMessage({ text: `Created & matched: ${newProduct.name}`, type: "success" });
+  };
+
+  // Full add-product modal
+  const EMPTY_NEW = { name: "", barcode: "", sku: "", uom: "PCS", costPrice: 0, sellingPrice: 0, categoryId: "", supplierId: "" };
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState({ ...EMPTY_NEW });
+  const [addScanMode, setAddScanMode] = useState(false);
+  const categories = dataStore.getCategories();
+  const suppliers = dataStore.getSuppliers();
+
+  const openAddModal = (prefillBarcode = "") => {
+    const cat = categories[0];
+    const sup = suppliers[0];
+    setAddForm({
+      ...EMPTY_NEW,
+      barcode: prefillBarcode,
+      sku: generateSKU("SKU", cat?.name ?? ""),
+      categoryId: cat?.id ?? "",
+      supplierId: sup?.id ?? "",
+    });
+    setAddScanMode(false);
+    setAddOpen(true);
+  };
+
+  const handleAddProduct = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addForm.name.trim()) return;
+    const cat = categories.find((c) => c.id === addForm.categoryId);
+    const sup = suppliers.find((s) => s.id === addForm.supplierId);
+    const newProduct = dataStore.createProduct({
+      name: addForm.name.trim(),
+      sku: addForm.sku || generateSKU("SKU", cat?.name ?? ""),
+      barcode: addForm.barcode || generateBarcode(),
+      description: "",
+      uom: addForm.uom,
+      costPrice: addForm.costPrice,
+      sellingPrice: addForm.sellingPrice,
+      minStockLevel: 10,
+      maxStockLevel: 500,
+      categoryId: addForm.categoryId,
+      categoryName: cat?.name ?? null,
+      supplierId: addForm.supplierId,
+      supplierName: sup?.name ?? null,
+      status: "ACTIVE",
+      imageUrl: null,
+      qrCode: null,
+    });
+    setAddOpen(false);
+    setQuickCreate(null);
+    setScannedProduct(newProduct);
+    setScanTime(new Date());
+    setActionMessage({ text: `Product "${newProduct.name}" added & matched`, type: "success" });
   };
 
   useEffect(() => {
@@ -206,12 +258,21 @@ export default function ScannerPage() {
           </p>
         </div>
 
-        {/* Operating Warehouse Indicator */}
-        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-full px-4 py-1.5 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <span className="text-[11px] text-slate-500 font-semibold">{t("scanner_active_wh")}:</span>
-          <span className="text-xs font-bold text-[#6b8a4e]">
-            {activeWarehouse?.name}
-          </span>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Add New Product Button */}
+          <button
+            onClick={() => openAddModal()}
+            className="flex items-center gap-2 bg-[#6b8a4e] hover:bg-[#5a7840] text-white text-xs font-bold px-4 py-2 rounded-2xl shadow-sm transition-all active:scale-[0.98]"
+          >
+            <PackagePlus className="h-4 w-4" /> Add New Product
+          </button>
+          {/* Operating Warehouse Indicator */}
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-full px-4 py-1.5 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <span className="text-[11px] text-slate-500 font-semibold">{t("scanner_active_wh")}:</span>
+            <span className="text-xs font-bold text-[#6b8a4e]">
+              {activeWarehouse?.name}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -494,6 +555,11 @@ export default function ScannerPage() {
                       <PackagePlus className="h-4 w-4" /> Add Product
                     </Button>
                     <Button type="button" variant="outline"
+                      onClick={() => { openAddModal(quickCreate.barcode); setQuickCreate(null); }}
+                      className="rounded-xl text-xs">
+                      Full Form
+                    </Button>
+                    <Button type="button" variant="outline"
                       onClick={() => setQuickCreate(null)}
                       className="rounded-xl">
                       Cancel
@@ -657,6 +723,98 @@ export default function ScannerPage() {
             </Button>
             <Button type="submit" className="bg-[#1e2e14] hover:bg-[#2d4020] text-white">
               {t("scanner_dispatch_now")}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Add New Product Modal */}
+      <Modal isOpen={addOpen} onClose={() => setAddOpen(false)}
+        title="Add New Product" description="Register a new product. Scan or type the barcode." size="lg">
+        <form onSubmit={handleAddProduct} className="space-y-4">
+
+          {/* Barcode field with inline scan toggle */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Barcode</label>
+              <button type="button"
+                onClick={() => setAddScanMode((v) => !v)}
+                className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 ${
+                  addScanMode ? "bg-[#6b8a4e] text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                }`}>
+                <Camera className="h-3 w-3" /> {addScanMode ? "Scanning…" : "Scan Barcode"}
+              </button>
+            </div>
+            {addScanMode ? (
+              <div className="rounded-xl overflow-hidden">
+                <BarcodeCameraScanner
+                  onScanSuccess={(code) => {
+                    setAddForm((f) => ({ ...f, barcode: code }));
+                    setAddScanMode(false);
+                  }}
+                  onFallback={() => setAddScanMode(false)}
+                />
+              </div>
+            ) : (
+              <Input
+                placeholder="Scan or type barcode…"
+                value={addForm.barcode}
+                onChange={(e) => setAddForm((f) => ({ ...f, barcode: e.target.value }))}
+                className="font-mono text-xs"
+              />
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Product Name *</label>
+              <Input placeholder="e.g. Rice 25kg" value={addForm.name}
+                onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">SKU</label>
+              <Input placeholder="Auto-generated" value={addForm.sku}
+                onChange={(e) => setAddForm((f) => ({ ...f, sku: e.target.value }))} className="font-mono text-xs" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">UOM</label>
+              <Input placeholder="PCS" value={addForm.uom}
+                onChange={(e) => setAddForm((f) => ({ ...f, uom: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Cost Price</label>
+              <Input type="number" step="0.01" min="0" value={addForm.costPrice}
+                onChange={(e) => setAddForm((f) => ({ ...f, costPrice: parseFloat(e.target.value) || 0 }))} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Selling Price</label>
+              <Input type="number" step="0.01" min="0" value={addForm.sellingPrice}
+                onChange={(e) => setAddForm((f) => ({ ...f, sellingPrice: parseFloat(e.target.value) || 0 }))} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Category</label>
+              <select value={addForm.categoryId}
+                onChange={(e) => setAddForm((f) => ({ ...f, categoryId: e.target.value }))}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-800 dark:text-slate-200">
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Supplier</label>
+              <select value={addForm.supplierId}
+                onChange={(e) => setAddForm((f) => ({ ...f, supplierId: e.target.value }))}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-800 dark:text-slate-200">
+                <option value="">— None —</option>
+                {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={!addForm.name.trim()}
+              className="bg-[#6b8a4e] hover:bg-[#5a7840] text-white gap-2">
+              <PackagePlus className="h-4 w-4" /> Add Product
             </Button>
           </div>
         </form>
