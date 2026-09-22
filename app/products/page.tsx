@@ -314,7 +314,10 @@ export default function ProductsPage() {
                   </td>
                   <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">{p.sku}</td>
                   <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">{p.categoryName ?? "—"}</td>
-                  <td className="py-3.5 px-4 text-right font-bold text-slate-900 dark:text-slate-100">{formatCurrency(p.sellingPrice)}</td>
+                  <td className="py-3.5 px-4 text-right">
+                    <div className="font-bold text-slate-900 dark:text-slate-100">{formatCurrency(p.sellingPrice, "USD")}</div>
+                    <div className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5">{formatCurrency(p.sellingPrice, "KHR")}</div>
+                  </td>
                   <td className="py-3.5 px-4 text-right">
                     <span className={`font-bold ${p.totalStock <= p.minStockLevel ? "text-red-600" : "text-emerald-600"}`}>
                       {p.totalStock}
