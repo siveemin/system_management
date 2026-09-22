@@ -208,6 +208,19 @@ class InventoryDataStore {
 
   public getProductByBarcodeOrSKU(code: string): ProductDTO | undefined {
     const clean = code.trim().toUpperCase();
+
+    // QR codes on printed labels encode as "PROD:SKU:BARCODE"
+    if (clean.startsWith("PROD:")) {
+      const parts = clean.split(":");
+      const skuFromQR = parts[1];
+      const barcodeFromQR = parts[2];
+      return this.products.find(
+        (p) =>
+          p.sku.toUpperCase() === skuFromQR ||
+          (barcodeFromQR && p.barcode && p.barcode.toUpperCase() === barcodeFromQR)
+      );
+    }
+
     return this.products.find(
       (p) =>
         p.sku.toUpperCase() === clean ||
@@ -239,6 +252,7 @@ class InventoryDataStore {
     const newProduct: ProductDTO = {
       ...data,
       id,
+      qrCode: data.qrCode ?? `PROD:${data.sku}:${data.barcode || ""}`,
       totalStock,
       totalReserved: 0,
       totalAvailable: totalStock,
