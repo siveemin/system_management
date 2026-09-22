@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/badge";
 import { formatCurrency, generateSKU, generateBarcode } from "@/lib/utils";
 import { PrintLabelModal } from "@/components/barcode/PrintLabelModal";
+import { BarcodeCameraScanner } from "@/components/scanner/BarcodeCameraScanner";
 
 const EMPTY_FORM = {
   name: "", sku: "", barcode: "", description: "", uom: "PCS",
@@ -36,6 +37,7 @@ export default function ProductsPage() {
   const [actionMsg, setActionMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [printProduct, setPrintProduct] = useState<ProductDTO | null>(null);
+  const [scanBarcodeMode, setScanBarcodeMode] = useState(false);
 
   useEffect(() => {
     const update = () => {
@@ -66,6 +68,7 @@ export default function ProductsPage() {
       supplierId: suppliers[0]?.id ?? "",
     });
     setInitStock({});
+    setScanBarcodeMode(false);
     setIsCreateOpen(true);
   };
 
@@ -77,6 +80,7 @@ export default function ProductsPage() {
       categoryId: p.categoryId ?? "", supplierId: p.supplierId ?? "", status: p.status,
       imageUrl: p.imageUrl ?? "",
     });
+    setScanBarcodeMode(false);
     setEditProduct(p);
   };
 
@@ -174,7 +178,36 @@ export default function ProductsPage() {
       <div className="grid grid-cols-2 gap-3">
         {field("name", `${t("label_name")} *`)}
         {field("sku", `${t("label_sku")} *`)}
-        {field("barcode", t("label_barcode"))}
+        {/* Barcode field with inline camera scan */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t("label_barcode")}</label>
+            <button type="button"
+              onClick={() => setScanBarcodeMode((v) => !v)}
+              className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 ${
+                scanBarcodeMode ? "bg-[#6b8a4e] text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+              }`}>
+              <Camera className="h-3 w-3" /> {scanBarcodeMode ? "Scanning…" : "Scan"}
+            </button>
+          </div>
+          {scanBarcodeMode ? (
+            <div className="rounded-xl overflow-hidden col-span-2">
+              <BarcodeCameraScanner
+                onScanSuccess={(code) => {
+                  setForm((f) => ({ ...f, barcode: code }));
+                  setScanBarcodeMode(false);
+                }}
+                onFallback={() => setScanBarcodeMode(false)}
+              />
+            </div>
+          ) : (
+            <Input
+              value={form.barcode}
+              onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))}
+              className="font-mono text-xs"
+            />
+          )}
+        </div>
         {field("uom", t("label_unit"))}
         {field("costPrice", t("label_cost_price"), "number", "0.01")}
         {field("sellingPrice", t("label_sell_price"), "number", "0.01")}
