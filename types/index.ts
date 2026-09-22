@@ -146,6 +146,7 @@ export interface ProductDTO {
   uom: string;
   costPrice: number;
   sellingPrice: number;
+  discountPercent?: number | null;
   minStockLevel: number;
   maxStockLevel?: number | null;
   imageUrl?: string | null;

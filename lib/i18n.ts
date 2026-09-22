@@ -63,6 +63,11 @@ const translations = {
     label_barcode: "Barcode",
     label_stock: "Stock",
     label_type: "Type",
+    label_discount: "Discount %",
+    label_discount_off: "OFF",
+    label_sale_price: "Sale Price",
+    label_original_price: "Original",
+    label_order_discount: "Order Discount %",
 
     // Status badges
     status_active: "Active",
@@ -635,6 +640,11 @@ const translations = {
     label_margin: "ភាគរយចំណេញ",
     label_total_stock: "សរុបស្តុក",
     label_quantity: "បរិមាណ",
+    label_discount: "បញ្ចុះតម្លៃ %",
+    label_discount_off: "បញ្ចុះ",
+    label_sale_price: "តម្លៃបន្ថយ",
+    label_original_price: "តម្លៃដើម",
+    label_order_discount: "បញ្ចុះតម្លៃការបញ្ជា %",
     label_warehouse: "ឃ្លាំង",
     label_category: "ប្រភេទ",
     label_supplier: "អ្នកផ្គត់ផ្គង់",

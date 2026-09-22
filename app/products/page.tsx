@@ -17,7 +17,7 @@ import { BarcodeCameraScanner } from "@/components/scanner/BarcodeCameraScanner"
 
 const EMPTY_FORM = {
   name: "", sku: "", barcode: "", description: "", uom: "PCS",
-  costPrice: 0, sellingPrice: 0, minStockLevel: 10, maxStockLevel: 500,
+  costPrice: 0, sellingPrice: 0, discountPercent: 0, minStockLevel: 10, maxStockLevel: 500,
   categoryId: "", supplierId: "", status: "ACTIVE" as "ACTIVE" | "INACTIVE",
   imageUrl: "",
 };
@@ -78,6 +78,7 @@ export default function ProductsPage() {
     setForm({
       name: p.name, sku: p.sku, barcode: p.barcode ?? "", description: p.description ?? "",
       uom: p.uom, costPrice: p.costPrice, sellingPrice: p.sellingPrice,
+      discountPercent: p.discountPercent ?? 0,
       minStockLevel: p.minStockLevel, maxStockLevel: p.maxStockLevel ?? 500,
       categoryId: p.categoryId ?? "", supplierId: p.supplierId ?? "", status: p.status,
       imageUrl: p.imageUrl ?? "",
@@ -101,6 +102,7 @@ export default function ProductsPage() {
     const sup = suppliers.find((s) => s.id === form.supplierId);
     dataStore.createProduct({
       ...form,
+      discountPercent: form.discountPercent || null,
       categoryName: cat?.name ?? null,
       supplierName: sup?.name ?? null,
       imageUrl: form.imageUrl || null,
@@ -118,6 +120,7 @@ export default function ProductsPage() {
     const sup = suppliers.find((s) => s.id === form.supplierId);
     dataStore.updateProduct(editProduct.id, {
       ...form,
+      discountPercent: form.discountPercent || null,
       categoryName: cat?.name ?? null,
       supplierName: sup?.name ?? null,
       imageUrl: form.imageUrl || null,
@@ -213,6 +216,21 @@ export default function ProductsPage() {
         {field("uom", t("label_unit"))}
         {field("costPrice", t("label_cost_price"), "number", "0.01")}
         {field("sellingPrice", t("label_sell_price"), "number", "0.01")}
+        <div>
+          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">{t("label_discount")} (0–100)</label>
+          <div className="relative">
+            <Input
+              type="number" step="0.1" min="0" max="100"
+              value={form.discountPercent}
+              onChange={(e) => setForm((f) => ({ ...f, discountPercent: parseFloat(e.target.value) || 0 }))}
+            />
+            {(form.discountPercent ?? 0) > 0 && (
+              <div className="mt-1 text-[11px] font-semibold text-rose-600">
+                {t("label_sale_price")}: {formatCurrency(form.sellingPrice * (1 - (form.discountPercent ?? 0) / 100), "USD")} · {formatCurrency(form.sellingPrice * (1 - (form.discountPercent ?? 0) / 100), "KHR")}
+              </div>
+            )}
+          </div>
+        </div>
         {field("minStockLevel", t("label_min_stock"), "number")}
         {field("maxStockLevel", `Max ${t("label_stock")}`, "number")}
       </div>
@@ -357,8 +375,21 @@ export default function ProductsPage() {
                   <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">{p.sku}</td>
                   <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">{p.categoryName ?? "—"}</td>
                   <td className="py-3.5 px-4 text-right">
-                    <div className="font-bold text-slate-900 dark:text-slate-100">{formatCurrency(p.sellingPrice, "USD")}</div>
-                    <div className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5">{formatCurrency(p.sellingPrice, "KHR")}</div>
+                    {(p.discountPercent ?? 0) > 0 ? (
+                      <>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span className="text-[9px] font-black bg-rose-500 text-white rounded px-1 py-0.5 uppercase tracking-wide">{p.discountPercent}% {t("label_discount_off")}</span>
+                          <span className="font-bold text-rose-600">{formatCurrency(p.sellingPrice * (1 - (p.discountPercent ?? 0) / 100), "USD")}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 line-through text-right mt-0.5">{formatCurrency(p.sellingPrice, "USD")}</div>
+                        <div className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">{formatCurrency(p.sellingPrice * (1 - (p.discountPercent ?? 0) / 100), "KHR")}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="font-bold text-slate-900 dark:text-slate-100">{formatCurrency(p.sellingPrice, "USD")}</div>
+                        <div className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5">{formatCurrency(p.sellingPrice, "KHR")}</div>
+                      </>
+                    )}
                   </td>
                   <td className="py-3.5 px-4 text-right">
                     <span className={`font-bold ${p.totalStock <= p.minStockLevel ? "text-red-600" : "text-emerald-600"}`}>

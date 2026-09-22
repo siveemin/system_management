@@ -25,6 +25,7 @@ export default function SalesOrdersPage() {
   const [warehouseId, setWarehouseId] = useState("");
   const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
+  const [orderDiscountPct, setOrderDiscountPct] = useState(0);
   const [orderItems, setOrderItems] = useState<{productId: string, quantity: number, unitPrice: number}[]>([
     { productId: "", quantity: 1, unitPrice: 0 }
   ]);
@@ -48,9 +49,12 @@ export default function SalesOrdersPage() {
     e.preventDefault();
     const validItems = orderItems.filter((i) => i.productId && i.quantity > 0);
     if (!customerId || !warehouseId || validItems.length === 0) return;
-    dataStore.createSalesOrder({ customerId, warehouseId, notes, items: validItems });
+    const subtotal = validItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+    const discount = subtotal * (orderDiscountPct / 100);
+    dataStore.createSalesOrder({ customerId, warehouseId, notes, discount, items: validItems });
     setIsCreateModalOpen(false);
     setNotes("");
+    setOrderDiscountPct(0);
     setOrderItems([{ productId: "", quantity: 1, unitPrice: 0 }]);
   };
 
@@ -193,30 +197,72 @@ export default function SalesOrdersPage() {
                 + {t("btn_add")}
               </button>
             </div>
-            {orderItems.map((item, idx) => (
-              <div key={idx} className="grid grid-cols-12 gap-2 mb-2">
-                <div className="col-span-6">
-                  <select value={item.productId}
-                    onChange={(e) => { const u=[...orderItems]; u[idx].productId=e.target.value;
-                      const p=products.find((p)=>p.id===e.target.value);
-                      if(p) u[idx].unitPrice=p.sellingPrice; setOrderItems(u); }}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-[#18181B] outline-none">
-                    <option value="">{t("select_product")}</option>
-                    {products.map((p) => <option key={p.id} value={p.id}>{p.name} (Avail: {p.totalAvailable})</option>)}
-                  </select>
+            {orderItems.map((item, idx) => {
+              const selProd = products.find((p) => p.id === item.productId);
+              return (
+                <div key={idx} className="grid grid-cols-12 gap-2 mb-2">
+                  <div className="col-span-6">
+                    <select value={item.productId}
+                      onChange={(e) => {
+                        const u = [...orderItems]; u[idx].productId = e.target.value;
+                        const p = products.find((p) => p.id === e.target.value);
+                        if (p) {
+                          const disc = p.discountPercent ?? 0;
+                          u[idx].unitPrice = disc > 0 ? +(p.sellingPrice * (1 - disc / 100)).toFixed(2) : p.sellingPrice;
+                        }
+                        setOrderItems(u);
+                      }}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-[#18181B] outline-none">
+                      <option value="">{t("select_product")}</option>
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}{(p.discountPercent ?? 0) > 0 ? ` 🏷️ ${p.discountPercent}% OFF` : ""} (Avail: {p.totalAvailable})
+                        </option>
+                      ))}
+                    </select>
+                    {selProd && (selProd.discountPercent ?? 0) > 0 && (
+                      <div className="text-[10px] text-rose-500 font-semibold mt-0.5">
+                        {selProd.discountPercent}% off · was {formatCurrency(selProd.sellingPrice, "USD")}
+                      </div>
+                    )}
+                  </div>
+                  <div className="col-span-3">
+                    <input type="number" placeholder="Qty" min="1" value={item.quantity}
+                      onChange={(e)=>{const u=[...orderItems];u[idx].quantity=Number(e.target.value);setOrderItems(u);}}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-center text-[#18181B] outline-none" />
+                  </div>
+                  <div className="col-span-3">
+                    <input type="number" placeholder="Price $" step="0.01" value={item.unitPrice}
+                      onChange={(e)=>{const u=[...orderItems];u[idx].unitPrice=Number(e.target.value);setOrderItems(u);}}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-right text-[#18181B] outline-none" />
+                  </div>
                 </div>
-                <div className="col-span-3">
-                  <input type="number" placeholder="Qty" min="1" value={item.quantity}
-                    onChange={(e)=>{const u=[...orderItems];u[idx].quantity=Number(e.target.value);setOrderItems(u);}}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-center text-[#18181B] outline-none" />
+              );
+            })}
+          </div>
+          {/* Order discount + running total */}
+          <div className="border-t border-slate-100 pt-3 space-y-2">
+            <div className="flex items-center gap-3">
+              <label className="text-xs font-semibold text-slate-700 shrink-0">{t("label_order_discount")} (0–100)</label>
+              <input type="number" min="0" max="100" step="0.1" value={orderDiscountPct}
+                onChange={(e) => setOrderDiscountPct(parseFloat(e.target.value) || 0)}
+                className="w-24 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-[#18181B] outline-none text-right" />
+              <span className="text-xs text-slate-400">%</span>
+            </div>
+            {(() => {
+              const sub = orderItems.filter(i => i.productId && i.quantity > 0).reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+              const disc = sub * (orderDiscountPct / 100);
+              const tax = (sub - disc) * 0.07;
+              const total = sub - disc + tax;
+              return sub > 0 ? (
+                <div className="text-[11px] text-slate-500 space-y-0.5 text-right">
+                  <div>Subtotal: <span className="font-semibold text-slate-800">{formatCurrency(sub, "USD")}</span></div>
+                  {disc > 0 && <div className="text-rose-500">Discount ({orderDiscountPct}%): −{formatCurrency(disc, "USD")}</div>}
+                  <div>Tax (7%): {formatCurrency(tax, "USD")}</div>
+                  <div className="text-sm font-bold text-[#18181B]">Total: {formatCurrency(total, "USD")}</div>
                 </div>
-                <div className="col-span-3">
-                  <input type="number" placeholder="Price $" step="0.01" value={item.unitPrice}
-                    onChange={(e)=>{const u=[...orderItems];u[idx].unitPrice=Number(e.target.value);setOrderItems(u);}}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-right text-[#18181B] outline-none" />
-                </div>
-              </div>
-            ))}
+              ) : null;
+            })()}
           </div>
           <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
             <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>{t("btn_cancel")}</Button>

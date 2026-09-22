@@ -451,19 +451,42 @@ export default function ScannerPage() {
                 {/* Price row */}
                 <div className="flex items-end justify-between mt-4 pt-4 border-t border-white/10">
                   <div className="flex items-center gap-4">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Sell Price</span>
-                      <span className="text-2xl font-extrabold text-white leading-none">
-                        {formatCurrency(scannedProduct.sellingPrice, "USD")}
-                      </span>
-                    </div>
-                    <div className="h-8 w-px bg-white/20" />
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">តម្លៃ (KHR)</span>
-                      <span className="text-lg font-bold text-amber-300 leading-none">
-                        {formatCurrency(scannedProduct.sellingPrice, "KHR")}
-                      </span>
-                    </div>
+                    {(scannedProduct.discountPercent ?? 0) > 0 ? (
+                      <>
+                        <div>
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-[9px] font-black bg-rose-500 text-white rounded px-1.5 py-0.5 uppercase">{scannedProduct.discountPercent}% OFF</span>
+                            <span className="text-[10px] text-slate-400 line-through">{formatCurrency(scannedProduct.sellingPrice, "USD")}</span>
+                          </div>
+                          <span className="text-2xl font-extrabold text-rose-300 leading-none">
+                            {formatCurrency(scannedProduct.sellingPrice * (1 - (scannedProduct.discountPercent ?? 0) / 100), "USD")}
+                          </span>
+                        </div>
+                        <div className="h-8 w-px bg-white/20" />
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">តម្លៃ (KHR)</span>
+                          <span className="text-lg font-bold text-amber-300 leading-none">
+                            {formatCurrency(scannedProduct.sellingPrice * (1 - (scannedProduct.discountPercent ?? 0) / 100), "KHR")}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Sell Price</span>
+                          <span className="text-2xl font-extrabold text-white leading-none">
+                            {formatCurrency(scannedProduct.sellingPrice, "USD")}
+                          </span>
+                        </div>
+                        <div className="h-8 w-px bg-white/20" />
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">តម្លៃ (KHR)</span>
+                          <span className="text-lg font-bold text-amber-300 leading-none">
+                            {formatCurrency(scannedProduct.sellingPrice, "KHR")}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
                   {scanTime && (
                     <div className="flex items-center gap-1.5 bg-white/10 border border-white/15 rounded-xl px-3 py-1.5 shrink-0">
