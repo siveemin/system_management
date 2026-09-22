@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import dataStore from "@/lib/store";
 import { useTranslation } from "@/lib/useTranslation";
-import { ProductDTO, WarehouseDTO } from "@/types";
+import { ProductDTO, WarehouseDTO, CategoryDTO, SupplierDTO } from "@/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ import { StatusBadge } from "@/components/ui/badge";
 import { formatCurrency, generateSKU, generateBarcode } from "@/lib/utils";
 import { BarcodeCameraScanner } from "@/components/scanner/BarcodeCameraScanner";
 import { HardwareScanListener } from "@/components/scanner/HardwareScanListener";
+const EMPTY_NEW = { name: "", barcode: "", sku: "", uom: "PCS", costPrice: 0, sellingPrice: 0, categoryId: "", supplierId: "" };
 
 export default function ScannerPage() {
   const { t } = useTranslation();
@@ -56,10 +57,8 @@ export default function ScannerPage() {
   const handleQuickCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickCreate?.name.trim()) return;
-    const allCats = dataStore.getCategories();
-    const allSups = dataStore.getSuppliers();
-    const cat = allCats[0];
-    const sup = allSups[0];
+    const cat = categories[0];
+    const sup = suppliers[0];
     const newProduct = dataStore.createProduct({
       name: quickCreate.name.trim(),
       sku: generateSKU("SKU", cat?.name ?? ""),
@@ -85,12 +84,11 @@ export default function ScannerPage() {
   };
 
   // Full add-product modal
-  const EMPTY_NEW = { name: "", barcode: "", sku: "", uom: "PCS", costPrice: 0, sellingPrice: 0, categoryId: "", supplierId: "" };
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ ...EMPTY_NEW });
   const [addScanMode, setAddScanMode] = useState(false);
-  const categories = dataStore.getCategories();
-  const suppliers = dataStore.getSuppliers();
+  const [categories, setCategories] = useState<CategoryDTO[]>(() => dataStore.getCategories());
+  const [suppliers, setSuppliers] = useState<SupplierDTO[]>(() => dataStore.getSuppliers());
 
   const openAddModal = (prefillBarcode = "") => {
     const cat = categories[0];
@@ -141,6 +139,8 @@ export default function ScannerPage() {
       setProducts(dataStore.getProducts());
       setWarehouses(dataStore.getWarehouses());
       setCurrentWarehouseId(dataStore.getCurrentWarehouseId());
+      setCategories(dataStore.getCategories());
+      setSuppliers(dataStore.getSuppliers());
       if (scannedProduct) {
         const refreshed = dataStore.getProductById(scannedProduct.id);
         if (refreshed) setScannedProduct(refreshed);
@@ -408,29 +408,64 @@ export default function ScannerPage() {
           {scannedProduct ? (
             <Card className="border-slate-200/80 dark:border-slate-800/80 overflow-hidden shadow-premium rounded-[26px]">
               <div className="bg-[#1e2e14] text-white p-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-mono font-bold bg-white/10 px-2.5 py-0.5 rounded-full border border-white/20">
-                    {scannedProduct.sku}
-                  </span>
-                  <StatusBadge status={scannedProduct.status} />
-                </div>
-                <h3 className="text-xl font-bold mt-2">{scannedProduct.name}</h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  {t("label_barcode")}: <strong className="text-white">{scannedProduct.barcode || "—"}</strong> &bull; {t("label_category")}:{" "}
-                  <strong className="text-white">{scannedProduct.categoryName || "—"}</strong>
-                </p>
-                {scanTime && (
-                  <div className="flex items-center gap-1.5 mt-3 bg-white/10 border border-white/15 rounded-xl px-3 py-1.5 w-fit">
-                    <Clock className="h-3 w-3 text-emerald-400 shrink-0" />
-                    <span className="text-[11px] font-semibold text-emerald-300">
-                      {scanTime.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-                    </span>
-                    <span className="text-white/30 text-[11px]">·</span>
-                    <span className="text-[13px] font-bold text-white tracking-wide font-mono">
-                      {scanTime.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                    </span>
+                <div className="flex items-start gap-4">
+                  {/* Product image */}
+                  {scannedProduct.imageUrl ? (
+                    <img
+                      src={scannedProduct.imageUrl}
+                      alt={scannedProduct.name}
+                      className="h-20 w-20 rounded-2xl object-cover border-2 border-white/20 shrink-0"
+                    />
+                  ) : (
+                    <div className="h-20 w-20 rounded-2xl bg-white/10 border-2 border-white/20 flex items-center justify-center text-2xl font-black text-white/50 shrink-0">
+                      {scannedProduct.name.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-mono font-bold bg-white/10 px-2.5 py-0.5 rounded-full border border-white/20 truncate">
+                        {scannedProduct.sku}
+                      </span>
+                      <StatusBadge status={scannedProduct.status} />
+                    </div>
+                    <h3 className="text-xl font-bold mt-2 leading-tight">{scannedProduct.name}</h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {t("label_barcode")}: <strong className="text-white">{scannedProduct.barcode || "—"}</strong> &bull; {t("label_category")}:{" "}
+                      <strong className="text-white">{scannedProduct.categoryName || "—"}</strong>
+                    </p>
                   </div>
-                )}
+                </div>
+
+                {/* Price row */}
+                <div className="flex items-end justify-between mt-4 pt-4 border-t border-white/10">
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Sell Price</span>
+                      <span className="text-2xl font-extrabold text-white leading-none">
+                        {formatCurrency(scannedProduct.sellingPrice, "USD")}
+                      </span>
+                    </div>
+                    <div className="h-8 w-px bg-white/20" />
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">តម្លៃ (KHR)</span>
+                      <span className="text-lg font-bold text-amber-300 leading-none">
+                        {formatCurrency(scannedProduct.sellingPrice, "KHR")}
+                      </span>
+                    </div>
+                  </div>
+                  {scanTime && (
+                    <div className="flex items-center gap-1.5 bg-white/10 border border-white/15 rounded-xl px-3 py-1.5 shrink-0">
+                      <Clock className="h-3 w-3 text-emerald-400 shrink-0" />
+                      <span className="text-[11px] font-semibold text-emerald-300">
+                        {scanTime.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                      </span>
+                      <span className="text-white/30 text-[11px]">·</span>
+                      <span className="text-[13px] font-bold text-white tracking-wide font-mono">
+                        {scanTime.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <CardContent className="p-6 space-y-6">

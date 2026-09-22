@@ -137,7 +137,7 @@ export default function ProductsPage() {
     </div>
   );
 
-  const ProductForm = ({ onSubmit, submitLabel }: { onSubmit: (e: React.FormEvent) => void; submitLabel: string }) => (
+  const productForm = ({ onSubmit, submitLabel }: { onSubmit: (e: React.FormEvent) => void; submitLabel: string }) => (
     <form onSubmit={onSubmit} className="space-y-4">
 
       {/* Image Upload */}
@@ -347,13 +347,13 @@ export default function ProductsPage() {
       {/* Create Modal */}
       <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title={t("page_products_create_title")}
         description={t("page_products_create_sub")} size="lg">
-        <ProductForm onSubmit={handleCreate} submitLabel={t("page_products_create_btn")} />
+        {productForm({ onSubmit: handleCreate, submitLabel: t("page_products_create_btn") })}
       </Modal>
 
       {/* Edit Modal */}
       <Modal isOpen={!!editProduct} onClose={() => setEditProduct(null)} title={t("page_products_edit_title")}
         description={editProduct?.sku} size="lg">
-        <ProductForm onSubmit={handleEdit} submitLabel={t("page_products_save_btn")} />
+        {productForm({ onSubmit: handleEdit, submitLabel: t("page_products_save_btn") })}
       </Modal>
 
       {/* Barcode / Print Label Modal */}
