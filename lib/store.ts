@@ -199,7 +199,7 @@ class InventoryDataStore {
 
   // --- Products ---
   public getProducts(): ProductDTO[] {
-    return this.products;
+    return [...this.products];
   }
 
   public getProductById(id: string): ProductDTO | undefined {
@@ -410,7 +410,7 @@ class InventoryDataStore {
 
   // --- Purchase Orders ---
   public getPurchaseOrders(): PurchaseOrderDTO[] {
-    return this.purchaseOrders;
+    return [...this.purchaseOrders];
   }
 
   public createPurchaseOrder(data: {
@@ -552,7 +552,7 @@ class InventoryDataStore {
 
   // --- Sales Orders ---
   public getSalesOrders(): SalesOrderDTO[] {
-    return this.salesOrders;
+    return [...this.salesOrders];
   }
 
   public createSalesOrder(data: {
@@ -728,7 +728,7 @@ class InventoryDataStore {
 
   // --- Stock Transfers ---
   public getStockTransfers(): StockTransferDTO[] {
-    return this.stockTransfers;
+    return [...this.stockTransfers];
   }
 
   public createStockTransfer(data: {
@@ -949,7 +949,7 @@ class InventoryDataStore {
   }
 
   public getAlerts(): LowStockAlertDTO[] {
-    return this.alerts;
+    return [...this.alerts];
   }
 
   public resolveAlert(alertId: string) {
@@ -963,7 +963,7 @@ class InventoryDataStore {
 
   // --- Notifications ---
   public getNotifications(): NotificationDTO[] {
-    return this.notifications;
+    return [...this.notifications];
   }
 
   public markNotificationAsRead(id: string) {
@@ -992,7 +992,7 @@ class InventoryDataStore {
 
   // --- Forecasting ---
   public getForecasts(): ForecastDTO[] {
-    return this.forecasts;
+    return [...this.forecasts];
   }
 
   public calculateForecast(productId: string): ForecastDTO | undefined {
@@ -1054,7 +1054,7 @@ class InventoryDataStore {
 
   // --- Warehouses, Suppliers, Customers, Categories ---
   public getWarehouses(): WarehouseDTO[] {
-    return this.warehouses;
+    return [...this.warehouses];
   }
 
   public createWarehouse(data: Omit<WarehouseDTO, "id" | "totalProductsCount" | "totalInventoryValue" | "lowStockItemsCount" | "createdAt">): WarehouseDTO {
@@ -1078,7 +1078,7 @@ class InventoryDataStore {
   }
 
   public getSuppliers(): SupplierDTO[] {
-    return this.suppliers;
+    return [...this.suppliers];
   }
 
   public createSupplier(data: Omit<SupplierDTO, "id" | "totalPurchased" | "purchaseOrdersCount" | "createdAt">): SupplierDTO {
@@ -1101,7 +1101,7 @@ class InventoryDataStore {
   }
 
   public getCustomers(): CustomerDTO[] {
-    return this.customers;
+    return [...this.customers];
   }
 
   public createCustomer(data: Omit<CustomerDTO, "id" | "totalSpent" | "salesOrdersCount" | "createdAt">): CustomerDTO {
@@ -1124,15 +1124,15 @@ class InventoryDataStore {
   }
 
   public getCategories(): CategoryDTO[] {
-    return this.categories;
+    return [...this.categories];
   }
 
   public getTransactions(): InventoryTransactionDTO[] {
-    return this.transactions;
+    return [...this.transactions];
   }
 
   public getUsers(): UserDTO[] {
-    return this.users;
+    return [...this.users];
   }
 
   public createUser(data: Omit<UserDTO, "id" | "createdAt">): UserDTO {
@@ -1178,7 +1178,7 @@ class InventoryDataStore {
   }
 
   public getAuditLogs(): AuditLogDTO[] {
-    return this.auditLogs;
+    return [...this.auditLogs];
   }
 
   private logAudit(data: Omit<AuditLogDTO, "id" | "userId" | "userName" | "createdAt">) {
