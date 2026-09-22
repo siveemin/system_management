@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutGrid, ShoppingBag, Users, BarChart3, FileText,
   Truck, ScanBarcode, Settings, Shield, Boxes,
-  TrendingUp, AlertTriangle,
+  TrendingUp, AlertTriangle, Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dataStore from "@/lib/store";
@@ -21,6 +21,7 @@ export function Sidebar() {
   const mainNav = [
     { key: "nav_dashboard", href: "/", icon: LayoutGrid },
     { key: "nav_products", href: "/products", icon: ShoppingBag },
+    { key: "nav_categories", href: "/categories", icon: Tag },
     { key: "nav_inventory", href: "/inventory", icon: Boxes },
     { key: "nav_customers", href: "/customers", icon: Users },
     { key: "nav_analytics", href: "/reports", icon: BarChart3 },

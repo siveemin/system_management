@@ -568,6 +568,23 @@ const translations = {
     // Active/Inactive chips
     chip_active: "Active",
     chip_inactive: "Inactive",
+
+    // Categories page
+    nav_categories: "Categories",
+    page_categories_title: "Product Categories",
+    page_categories_sub: "categories",
+    page_categories_add: "Add Category",
+    page_categories_create_title: "Create Category",
+    page_categories_edit_title: "Edit Category",
+    page_categories_created: "Category created.",
+    page_categories_updated: "Category updated.",
+    page_categories_deleted: "Category deleted.",
+    page_categories_none: "No categories yet.",
+    page_categories_col_name: "Category",
+    page_categories_col_products: "Products",
+    page_categories_col_description: "Description",
+    page_categories_create_btn: "Create Category",
+    page_categories_save_btn: "Save Changes",
   },
 
   km: {
@@ -1137,6 +1154,23 @@ const translations = {
     // Active/Inactive chips
     chip_active: "សកម្ម",
     chip_inactive: "អសកម្ម",
+
+    // Categories page
+    nav_categories: "ប្រភេទទំនិញ",
+    page_categories_title: "ប្រភេទទំនិញ",
+    page_categories_sub: "ប្រភេទ",
+    page_categories_add: "បន្ថែមប្រភេទ",
+    page_categories_create_title: "បង្កើតប្រភេទ",
+    page_categories_edit_title: "កែប្រែប្រភេទ",
+    page_categories_created: "បានបង្កើតប្រភេទ។",
+    page_categories_updated: "បានធ្វើបច្ចុប្បន្នភាពប្រភេទ។",
+    page_categories_deleted: "បានលុបប្រភេទ។",
+    page_categories_none: "មិនទាន់មានប្រភេទ។",
+    page_categories_col_name: "ប្រភេទ",
+    page_categories_col_products: "ផលិតផល",
+    page_categories_col_description: "ការពិពណ៌នា",
+    page_categories_create_btn: "បង្កើតប្រភេទ",
+    page_categories_save_btn: "រក្សាការផ្លាស់ប្តូរ",
   },
 } as const;
 

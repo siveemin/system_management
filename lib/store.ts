@@ -1135,6 +1135,44 @@ class InventoryDataStore {
     return [...this.categories];
   }
 
+  public createCategory(data: { name: string; description?: string | null }): CategoryDTO {
+    const slug = data.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const cat: CategoryDTO = {
+      id: `cat-${Date.now()}`,
+      name: data.name,
+      slug,
+      description: data.description ?? null,
+      productCount: 0,
+    };
+    this.categories.unshift(cat);
+    this.logAudit({ action: "CREATE_CATEGORY", resourceType: "CATEGORY", resourceId: cat.id, description: `Created category ${cat.name}` });
+    this.notify();
+    return cat;
+  }
+
+  public updateCategory(id: string, data: Partial<Pick<CategoryDTO, "name" | "description">>): CategoryDTO | null {
+    const cat = this.categories.find((c) => c.id === id);
+    if (!cat) return null;
+    if (data.name) {
+      cat.name = data.name;
+      cat.slug = data.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    }
+    if (data.description !== undefined) cat.description = data.description;
+    this.logAudit({ action: "UPDATE_CATEGORY", resourceType: "CATEGORY", resourceId: id, description: `Updated category ${cat.name}` });
+    this.notify();
+    return { ...cat };
+  }
+
+  public deleteCategory(id: string): boolean {
+    const idx = this.categories.findIndex((c) => c.id === id);
+    if (idx === -1) return false;
+    const name = this.categories[idx].name;
+    this.categories.splice(idx, 1);
+    this.logAudit({ action: "DELETE_CATEGORY", resourceType: "CATEGORY", resourceId: id, description: `Deleted category ${name}` });
+    this.notify();
+    return true;
+  }
+
   public getTransactions(): InventoryTransactionDTO[] {
     return [...this.transactions];
   }

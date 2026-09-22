@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutGrid, ShoppingBag, Boxes, Users, BarChart3, FileText,
   Truck, ScanBarcode, Settings, Shield, TrendingUp, AlertTriangle,
-  ShoppingCart, ChevronDown, ChevronRight, Heart,
+  ShoppingCart, ChevronDown, ChevronRight, Heart, Tag,
 } from "lucide-react";
 import { drawerState } from "@/lib/drawerState";
 import { useSwipeGesture } from "@/lib/useSwipeGesture";
@@ -33,6 +33,7 @@ export function DrawerMenu() {
       items: [
         { label: t("nav_dashboard"),    href: "/",                icon: LayoutGrid  },
         { label: t("nav_products"),     href: "/products",        icon: ShoppingBag },
+        { label: t("nav_categories"),   href: "/categories",      icon: Tag         },
         { label: t("page_inventory_title"), href: "/inventory",   icon: Boxes       },
         { label: t("nav_low_stock"),    href: "/low-stock",       icon: AlertTriangle },
       ],
