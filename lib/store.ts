@@ -73,13 +73,24 @@ class InventoryDataStore {
   private saveToLocalStorage() {
     if (typeof window === "undefined") return;
     try {
+      // Save images separately so a large base64 photo can't block the main state save.
+      const images: Record<string, string> = {};
+      this.products.forEach((p) => { if (p.imageUrl) images[p.id] = p.imageUrl; });
+      try {
+        localStorage.setItem("smart_inventory_images", JSON.stringify(images));
+      } catch {
+        // Images bucket full — skip; products will still load without photos.
+      }
+
+      // Strip imageUrls from products before serialising the main state (keeps it small).
+      const productsNoImages = this.products.map((p) => ({ ...p, imageUrl: null }));
       localStorage.setItem("smart_inventory_state", JSON.stringify({
         users: this.users,
         warehouses: this.warehouses,
         categories: this.categories,
         suppliers: this.suppliers,
         customers: this.customers,
-        products: this.products,
+        products: productsNoImages,
         transactions: this.transactions,
         purchaseOrders: this.purchaseOrders,
         salesOrders: this.salesOrders,
@@ -94,7 +105,23 @@ class InventoryDataStore {
         language: this.language,
       }));
     } catch {
-      // Ignore storage limit issues in demo mode
+      // If even the stripped save fails, try saving just the critical data.
+      try {
+        localStorage.setItem("smart_inventory_state", JSON.stringify({
+          categories: this.categories,
+          products: this.products.map((p) => ({ ...p, imageUrl: null })),
+          suppliers: this.suppliers,
+          customers: this.customers,
+          warehouses: this.warehouses,
+          users: this.users,
+          currentUserId: this.currentUser.id,
+          currentWarehouseId: this.currentWarehouseId,
+          currency: this.currency,
+          language: this.language,
+        }));
+      } catch {
+        // Nothing more we can do — storage is critically full.
+      }
     }
   }
 
@@ -109,7 +136,18 @@ class InventoryDataStore {
         if (parsed.categories) this.categories = parsed.categories;
         if (parsed.suppliers) this.suppliers = parsed.suppliers;
         if (parsed.customers) this.customers = parsed.customers;
-        if (parsed.products) this.products = parsed.products;
+        if (parsed.products) {
+          // Re-attach images stored in the separate images bucket.
+          let images: Record<string, string> = {};
+          try {
+            const imgData = localStorage.getItem("smart_inventory_images");
+            if (imgData) images = JSON.parse(imgData);
+          } catch { /* ignore */ }
+          this.products = parsed.products.map((p: ProductDTO) => ({
+            ...p,
+            imageUrl: images[p.id] ?? p.imageUrl ?? null,
+          }));
+        }
         if (parsed.transactions) this.transactions = parsed.transactions;
         if (parsed.purchaseOrders) this.purchaseOrders = parsed.purchaseOrders;
         if (parsed.salesOrders) this.salesOrders = parsed.salesOrders;
