@@ -223,9 +223,9 @@ class InventoryDataStore {
 
     return this.products.find(
       (p) =>
-        p.sku.toUpperCase() === clean ||
-        (p.barcode && p.barcode.toUpperCase() === clean) ||
-        (p.qrCode && p.qrCode.toUpperCase().includes(clean))
+        p.sku.trim().toUpperCase() === clean ||
+        (p.barcode && p.barcode.trim().toUpperCase() === clean) ||
+        (p.qrCode && p.qrCode.trim().toUpperCase().includes(clean))
     );
   }
 

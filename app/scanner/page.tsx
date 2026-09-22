@@ -38,8 +38,9 @@ export default function ScannerPage() {
   const [searchFeedback, setSearchFeedback] = useState<string | null>(null);
   const [scanMode, setScanMode] = useState<"camera" | "hardware">("camera");
 
-  const [warehouses, setWarehouses] = useState<WarehouseDTO[]>(dataStore.getWarehouses());
-  const [currentWarehouseId, setCurrentWarehouseId] = useState<string>(dataStore.getCurrentWarehouseId());
+  const [products, setProducts] = useState<ProductDTO[]>(() => dataStore.getProducts());
+  const [warehouses, setWarehouses] = useState<WarehouseDTO[]>(() => dataStore.getWarehouses());
+  const [currentWarehouseId, setCurrentWarehouseId] = useState<string>(() => dataStore.getCurrentWarehouseId());
 
   // Quick Action Modal states
   const [actionModal, setActionModal] = useState<"stock_in" | "stock_out" | "transfer" | null>(null);
@@ -50,6 +51,7 @@ export default function ScannerPage() {
 
   useEffect(() => {
     const update = () => {
+      setProducts(dataStore.getProducts());
       setWarehouses(dataStore.getWarehouses());
       setCurrentWarehouseId(dataStore.getCurrentWarehouseId());
       if (scannedProduct) {
@@ -280,7 +282,7 @@ export default function ScannerPage() {
                     {t("scanner_demo_picks")}:
                   </span>
                   <div className="flex flex-wrap gap-1.5">
-                    {dataStore.getProducts().map((p) => (
+                    {products.map((p) => (
                       <button
                         key={p.id}
                         onClick={() => {
