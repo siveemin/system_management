@@ -1,8 +1,8 @@
-import { defineConfig } from "/Users/mac/.npm/_npx/51d6e96430f348c4/node_modules/@prisma/config/dist/index.js";
+import { defineConfig } from "@prisma/config";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: "file:./prisma/dev.db",
+    url: process.env.DATABASE_URL || "file:./prisma/dev.db",
   },
 });

@@ -37,6 +37,7 @@ export default function ScannerPage() {
   const [manualCode, setManualCode] = useState("");
   const [scannedProduct, setScannedProduct] = useState<ProductDTO | null>(null);
   const [scanTime, setScanTime] = useState<Date | null>(null);
+  const [scannedFormat, setScannedFormat] = useState<string | null>(null);
   const [searchFeedback, setSearchFeedback] = useState<string | null>(null);
   const [scanMode, setScanMode] = useState<"camera" | "hardware">("camera");
 
@@ -149,24 +150,26 @@ export default function ScannerPage() {
     return dataStore.subscribe(update);
   }, [scannedProduct]);
 
-  const handleLookup = (code: string) => {
+  const handleLookup = (code: string, format?: string) => {
     if (!code) return;
-    // Strip invisible control chars before lookup (same as store does internally)
     const rawDisplay = code.replace(/[\x00-\x1f\x7f]/g, "").trim();
     if (!rawDisplay) return;
     const prod = dataStore.getProductByBarcodeOrSKU(rawDisplay);
+    const fmtLabel = format && format !== "unknown" ? ` · ${format.replace(/_/g, " ").toUpperCase()}` : "";
     if (prod) {
       setScannedProduct(prod);
       setScanTime(new Date());
+      setScannedFormat(format ?? null);
       setSearchFeedback(null);
       setQuickCreate(null);
-      setActionMessage({ text: `✓ ${prod.name} · scanned: ${rawDisplay}`, type: "success" });
+      setActionMessage({ text: `✓ ${prod.name} · ${rawDisplay}${fmtLabel}`, type: "success" });
     } else {
       setScannedProduct(null);
       setScanTime(null);
+      setScannedFormat(format ?? null);
       setSearchFeedback(rawDisplay);
       setQuickCreate({ barcode: rawDisplay, name: "" });
-      setActionMessage({ text: `Not found: "${rawDisplay}" — register it below`, type: "error" });
+      setActionMessage({ text: `Not found: "${rawDisplay}"${fmtLabel} — register it below`, type: "error" });
     }
   };
 
@@ -341,7 +344,7 @@ export default function ScannerPage() {
             <CardContent>
               {scanMode === "camera" ? (
                 <BarcodeCameraScanner
-                  onScanSuccess={(text) => handleLookup(text)}
+                  onScanSuccess={(text, fmt) => handleLookup(text, fmt)}
                   onFallback={() => setScanMode("hardware")}
                 />
               ) : (
@@ -441,8 +444,14 @@ export default function ScannerPage() {
                       <StatusBadge status={scannedProduct.status} />
                     </div>
                     <h3 className="text-xl font-bold mt-2 leading-tight">{scannedProduct.name}</h3>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {t("label_barcode")}: <strong className="text-white">{scannedProduct.barcode || "—"}</strong> &bull; {t("label_category")}:{" "}
+                    <p className="text-xs text-slate-400 mt-1 flex items-center flex-wrap gap-x-1.5 gap-y-1">
+                      {t("label_barcode")}: <strong className="text-white">{scannedProduct.barcode || "—"}</strong>
+                      {scannedFormat && scannedFormat !== "unknown" && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-teal-500/20 border border-teal-400/30 text-teal-300 text-[9px] font-bold uppercase tracking-wide">
+                          {scannedFormat.replace(/_/g, " ")}
+                        </span>
+                      )}
+                      &bull; {t("label_category")}:{" "}
                       <strong className="text-white">{scannedProduct.categoryName || "—"}</strong>
                     </p>
                   </div>
