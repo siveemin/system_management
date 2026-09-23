@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import {
-  PackagePlus, Search, Edit2, Package, CheckCircle2, AlertCircle, Camera, X, Barcode,
+  PackagePlus, Search, Edit2, Package, CheckCircle2, AlertCircle, Camera, X, Barcode, Download,
 } from "lucide-react";
+import { exportToExcel } from "@/lib/export";
 import dataStore from "@/lib/store";
 import { useTranslation } from "@/lib/useTranslation";
 import { ProductDTO, CategoryDTO, SupplierDTO, WarehouseDTO } from "@/types";
@@ -305,9 +306,33 @@ export default function ProductsPage() {
             {products.length} {t("page_products_sub")} · {products.filter((p) => p.status === "ACTIVE").length} {t("page_products_active")}
           </p>
         </div>
-        <Button onClick={openCreate} className="gap-2 bg-[#6b8a4e] hover:bg-[#5a7840] text-white font-semibold">
-          <PackagePlus className="h-4 w-4" /> {t("page_products_add")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => exportToExcel(
+              products.map((p) => ({
+                SKU: p.sku,
+                Name: p.name,
+                Category: p.categoryName ?? "",
+                Supplier: p.supplierName ?? "",
+                UOM: p.uom,
+                "Cost Price": p.costPrice,
+                "Selling Price": p.sellingPrice,
+                "Total Stock": p.totalStock,
+                "Min Stock": p.minStockLevel,
+                Status: p.status,
+              })),
+              "products-export",
+              "Products"
+            )}
+            className="gap-2 text-[#6b8a4e] border-[#6b8a4e] hover:bg-[#6b8a4e]/10 font-medium"
+          >
+            <Download className="h-4 w-4" /> Export Excel
+          </Button>
+          <Button onClick={openCreate} className="gap-2 bg-[#6b8a4e] hover:bg-[#5a7840] text-white font-semibold">
+            <PackagePlus className="h-4 w-4" /> {t("page_products_add")}
+          </Button>
+        </div>
       </div>
 
       {actionMsg && (

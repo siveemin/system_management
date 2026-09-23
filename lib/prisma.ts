@@ -1,18 +1,24 @@
-// Prisma Client singleton loader with fallback support
+// Prisma Client singleton loader — uses libSQL driver adapter for SQLite
 let prismaInstance: any = null;
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { PrismaClient } = require("@prisma/client");
-  const globalForPrisma = globalThis as unknown as {
-    prisma: any;
-  };
-  prismaInstance =
-    globalForPrisma.prisma ??
-    new PrismaClient({
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { PrismaLibSql } = require("@prisma/adapter-libsql");
+
+  const globalForPrisma = globalThis as unknown as { prisma: any };
+
+  if (!globalForPrisma.prisma) {
+    const dbUrl = process.env.DATABASE_URL || "file:./prisma/dev.db";
+    const adapter = new PrismaLibSql({ url: dbUrl });
+    globalForPrisma.prisma = new PrismaClient({
+      adapter,
       log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
     });
-  if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prismaInstance;
+  }
+
+  prismaInstance = globalForPrisma.prisma;
 } catch {
   // Standalone fallback when running in client or demo mode without pre-generated DB
   prismaInstance = null;

@@ -68,6 +68,37 @@ class InventoryDataStore {
     this.hydrated = true;
     this.loadFromLocalStorage();
     this.notify();
+    // Fire-and-forget API hydration to overlay localStorage with DB data
+    this.hydrateFromAPI();
+  }
+
+  // Fire-and-forget helper — never blocks the UI
+  private apiSync(path: string, options?: RequestInit): void {
+    if (typeof window === "undefined") return;
+    fetch(path, options).catch(() => { /* silent: offline or server not started */ });
+  }
+
+  // Pull fresh data from API and update in-memory store (non-blocking)
+  private async hydrateFromAPI(): Promise<void> {
+    if (typeof window === "undefined") return;
+    try {
+      const [products, categories, warehouses, suppliers, customers] = await Promise.all([
+        fetch("/api/products").then((r) => r.ok ? r.json() : null).catch(() => null),
+        fetch("/api/categories").then((r) => r.ok ? r.json() : null).catch(() => null),
+        fetch("/api/warehouses").then((r) => r.ok ? r.json() : null).catch(() => null),
+        fetch("/api/suppliers").then((r) => r.ok ? r.json() : null).catch(() => null),
+        fetch("/api/customers").then((r) => r.ok ? r.json() : null).catch(() => null),
+      ]);
+      let changed = false;
+      if (Array.isArray(products) && products.length > 0) { this.products = products; changed = true; }
+      if (Array.isArray(categories) && categories.length > 0) { this.categories = categories; changed = true; }
+      if (Array.isArray(warehouses) && warehouses.length > 0) { this.warehouses = warehouses; changed = true; }
+      if (Array.isArray(suppliers) && suppliers.length > 0) { this.suppliers = suppliers; changed = true; }
+      if (Array.isArray(customers) && customers.length > 0) { this.customers = customers; changed = true; }
+      if (changed) this.notify();
+    } catch {
+      // API not available — stay with localStorage data
+    }
   }
 
   private saveToLocalStorage() {
@@ -351,6 +382,12 @@ class InventoryDataStore {
 
     this.checkLowStockAlert(newProduct);
     this.notify();
+    // Fire-and-forget API sync
+    this.apiSync("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...newProduct, id: undefined, createdAt: undefined, inventories: undefined, totalStock: undefined, totalReserved: undefined, totalAvailable: undefined }),
+    });
     return newProduct;
   }
 
@@ -374,6 +411,12 @@ class InventoryDataStore {
 
     this.checkLowStockAlert(updated);
     this.notify();
+    // Fire-and-forget API sync
+    this.apiSync(`/api/products/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
     return updated;
   }
 
@@ -1199,6 +1242,7 @@ class InventoryDataStore {
     this.categories.unshift(cat);
     this.logAudit({ action: "CREATE_CATEGORY", resourceType: "CATEGORY", resourceId: cat.id, description: `Created category ${cat.name}` });
     this.notify();
+    this.apiSync("/api/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cat) });
     return cat;
   }
 
@@ -1262,6 +1306,8 @@ class InventoryDataStore {
     this.products.splice(idx, 1);
     this.logAudit({ action: "DELETE_PRODUCT", resourceType: "PRODUCT", resourceId: id, description: `Deleted product ${name}` });
     this.notify();
+    // Fire-and-forget API sync
+    this.apiSync(`/api/products/${id}`, { method: "DELETE" });
     return true;
   }
 

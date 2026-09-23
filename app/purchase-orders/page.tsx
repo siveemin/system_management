@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ShoppingBag, Plus, Search, Eye, CheckCircle2, AlertCircle, Package } from "lucide-react";
+import { ShoppingBag, Plus, Search, Eye, CheckCircle2, AlertCircle, Package, Download } from "lucide-react";
+import { exportToExcel } from "@/lib/export";
 import dataStore from "@/lib/store";
 import { useTranslation } from "@/lib/useTranslation";
 import { PurchaseOrderDTO, ProductDTO, SupplierDTO, WarehouseDTO } from "@/types";
@@ -96,10 +97,30 @@ export default function PurchaseOrdersPage() {
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">{t("po_page_sub")}</p>
         </div>
-        <button onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-2 bg-[#6b8a4e] hover:bg-[#E63B13] text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-sm transition-all cursor-pointer select-none active:scale-[0.98]">
-          <Plus className="h-4 w-4" /> {t("page_po_add")}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => exportToExcel(
+              purchaseOrders.map((o) => ({
+                "Order #": o.orderNumber,
+                Supplier: o.supplierName,
+                Warehouse: o.warehouseName,
+                "Order Date": new Date(o.orderDate).toLocaleDateString(),
+                "Expected Delivery": o.expectedDeliveryDate ? new Date(o.expectedDeliveryDate).toLocaleDateString() : "",
+                Status: o.status,
+                Total: o.totalAmount,
+              })),
+              "purchase-orders-export",
+              "Purchase Orders"
+            )}
+            className="flex items-center gap-2 border border-[#6b8a4e] text-[#6b8a4e] hover:bg-[#6b8a4e]/10 text-xs font-bold px-4 py-2.5 rounded-2xl shadow-sm transition-all cursor-pointer select-none active:scale-[0.98]"
+          >
+            <Download className="h-4 w-4" /> Export Excel
+          </button>
+          <button onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 bg-[#6b8a4e] hover:bg-[#E63B13] text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-sm transition-all cursor-pointer select-none active:scale-[0.98]">
+            <Plus className="h-4 w-4" /> {t("page_po_add")}
+          </button>
+        </div>
       </div>
 
       <div className="relative">
