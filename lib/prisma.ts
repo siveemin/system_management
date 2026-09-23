@@ -19,8 +19,8 @@ try {
   }
 
   prismaInstance = globalForPrisma.prisma;
-} catch {
-  // Standalone fallback when running in client or demo mode without pre-generated DB
+} catch (e) {
+  console.error("[prisma] Failed to initialise Prisma client:", e);
   prismaInstance = null;
 }
 
