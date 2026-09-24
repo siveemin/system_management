@@ -11,7 +11,8 @@ try {
 
   if (!globalForPrisma.prisma) {
     const dbUrl = process.env.DATABASE_URL || "file:./prisma/dev.db";
-    const adapter = new PrismaLibSql({ url: dbUrl });
+    const authToken = process.env.TURSO_AUTH_TOKEN;
+    const adapter = new PrismaLibSql({ url: dbUrl, ...(authToken ? { authToken } : {}) });
     globalForPrisma.prisma = new PrismaClient({
       adapter,
       log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
