@@ -7,7 +7,7 @@
     "build": "npx prisma@7 generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "npx prisma@7 generate && npx prisma@7 db push && npx tsx prisma/setup.ts"
+    "postinstall": "npx prisma@7 generate && ([ \"$VERCEL\" = '1' ] || (npx prisma@7 db push && npx tsx prisma/setup.ts))"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
