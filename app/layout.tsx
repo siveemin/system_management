@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Battambang } from "next/font/google";
 import "./globals.css";
 import { AppTopbar } from "@/components/layout/AppTopbar";
@@ -19,8 +19,14 @@ const battambang = Battambang({
 export const metadata: Metadata = {
   title: "Smart Inventory",
   description: "Smart warehouse and inventory management.",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
-} as any;
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export default function RootLayout({
   children,
