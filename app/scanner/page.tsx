@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ScanBarcode,
   Camera,
@@ -18,6 +18,10 @@ import {
   Sparkles,
   Clock,
   PackagePlus,
+  Trash2,
+  Receipt,
+  X,
+  Printer,
 } from "lucide-react";
 import dataStore from "@/lib/store";
 import { useTranslation } from "@/lib/useTranslation";
@@ -30,7 +34,15 @@ import { StatusBadge } from "@/components/ui/badge";
 import { formatCurrency, generateSKU, generateBarcode } from "@/lib/utils";
 import { BarcodeCameraScanner } from "@/components/scanner/BarcodeCameraScanner";
 import { HardwareScanListener } from "@/components/scanner/HardwareScanListener";
+import { KhmerInvoice } from "@/components/invoice/KhmerInvoice";
+
 const EMPTY_NEW = { name: "", barcode: "", sku: "", uom: "PCS", costPrice: 0, sellingPrice: 0, categoryId: "", supplierId: "" };
+
+interface CartItem { product: ProductDTO; quantity: number; unitPrice: number; }
+
+function genOrderNumber() {
+  return "SO-" + Date.now().toString().slice(-6);
+}
 
 export default function ScannerPage() {
   const { t } = useTranslation();
@@ -40,6 +52,18 @@ export default function ScannerPage() {
   const [scannedFormat, setScannedFormat] = useState<string | null>(null);
   const [searchFeedback, setSearchFeedback] = useState<string | null>(null);
   const [scanMode, setScanMode] = useState<"camera" | "hardware">("camera");
+  const lastScanRef = useRef<{ code: string; time: number } | null>(null);
+
+  // POS / Quick Sale mode
+  const [pageMode, setPageMode] = useState<"lookup" | "pos">("lookup");
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutCustomerId, setCheckoutCustomerId] = useState("");
+  const [checkoutNotes, setCheckoutNotes] = useState("");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutDone, setCheckoutDone] = useState<string | null>(null);
+  const [invoiceData, setInvoiceData] = useState<any | null>(null);
 
   const [products, setProducts] = useState<ProductDTO[]>(() => dataStore.getProducts());
   const [warehouses, setWarehouses] = useState<WarehouseDTO[]>(() => dataStore.getWarehouses());
@@ -150,13 +174,33 @@ export default function ScannerPage() {
     return dataStore.subscribe(update);
   }, [scannedProduct]);
 
+  useEffect(() => {
+    fetch("/api/customers").then(r => r.ok ? r.json() : []).then(setCustomers).catch(() => {});
+  }, []);
+
   const handleLookup = (code: string, format?: string) => {
     if (!code) return;
     const rawDisplay = code.replace(/[\x00-\x1f\x7f]/g, "").trim();
     if (!rawDisplay) return;
+    const now = Date.now();
+    if (lastScanRef.current?.code === rawDisplay && now - lastScanRef.current.time < 2000) return;
+    lastScanRef.current = { code: rawDisplay, time: now };
     const prod = dataStore.getProductByBarcodeOrSKU(rawDisplay);
     const fmtLabel = format && format !== "unknown" ? ` · ${format.replace(/_/g, " ").toUpperCase()}` : "";
     if (prod) {
+      if (pageMode === "pos") {
+        setCart(prev => {
+          const idx = prev.findIndex(i => i.product.id === prod.id);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
+            return next;
+          }
+          return [...prev, { product: prod, quantity: 1, unitPrice: prod.sellingPrice }];
+        });
+        setActionMessage({ text: `✓ Added: ${prod.name}${fmtLabel}`, type: "success" });
+        return;
+      }
       setScannedProduct(prod);
       setScanTime(new Date());
       setScannedFormat(format ?? null);
@@ -170,6 +214,69 @@ export default function ScannerPage() {
       setSearchFeedback(rawDisplay);
       setQuickCreate({ barcode: rawDisplay, name: "" });
       setActionMessage({ text: `Not found: "${rawDisplay}"${fmtLabel} — register it below`, type: "error" });
+    }
+  };
+
+  const cartTotal = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+
+  const handleCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (cart.length === 0) return;
+    setCheckoutLoading(true);
+    const subtotal = cartTotal;
+    const body = {
+      orderNumber: genOrderNumber(),
+      customerId: checkoutCustomerId || null,
+      warehouseId: currentWarehouseId,
+      orderDate: new Date().toISOString(),
+      status: "CONFIRMED",
+      subtotal,
+      discount: 0,
+      tax: 0,
+      totalAmount: subtotal,
+      notes: checkoutNotes || "Walk-in sale via scanner",
+      items: cart.map(i => ({
+        productId: i.product.id,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        totalAmount: i.unitPrice * i.quantity,
+      })),
+    };
+    try {
+      const res = await fetch("/api/sales-orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (res.ok) {
+        const order = await res.json();
+        const selectedCustomer = customers.find(c => c.id === checkoutCustomerId);
+        setInvoiceData({
+          orderNumber: order.orderNumber,
+          orderDate: order.orderDate,
+          customerName: selectedCustomer?.name ?? "អតិថិជនទូទៅ (Walk-in)",
+          warehouseName: warehouses.find(w => w.id === currentWarehouseId)?.name ?? "Warehouse",
+          items: cart.map(i => ({
+            productName: i.product.name,
+            productSku: i.product.sku,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            totalAmount: i.unitPrice * i.quantity,
+          })),
+          subtotal: cartTotal,
+          discount: 0,
+          tax: 0,
+          total: cartTotal,
+          notes: checkoutNotes,
+        });
+        setCheckoutDone(order.orderNumber);
+        setCart([]);
+        setCheckoutOpen(false);
+        setCheckoutNotes("");
+        setCheckoutCustomerId("");
+      } else {
+        setActionMessage({ text: "Failed to create order. Try again.", type: "error" });
+      }
+    } catch {
+      setActionMessage({ text: "Network error. Try again.", type: "error" });
+    } finally {
+      setCheckoutLoading(false);
     }
   };
 
@@ -266,6 +373,23 @@ export default function ScannerPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Mode toggle */}
+          <div className="flex rounded-full bg-slate-100 p-1 text-xs font-bold border border-slate-200">
+            <button
+              onClick={() => setPageMode("lookup")}
+              className={`px-3 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${pageMode === "lookup" ? "bg-white shadow text-slate-900" : "text-slate-500 hover:text-slate-800"}`}
+            >
+              <Search className="h-3.5 w-3.5" /> Lookup
+            </button>
+            <button
+              onClick={() => setPageMode("pos")}
+              className={`px-3 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${pageMode === "pos" ? "bg-[#6b8a4e] shadow text-white" : "text-slate-500 hover:text-slate-800"}`}
+            >
+              <ShoppingCart className="h-3.5 w-3.5" /> Quick Sale
+              {cart.length > 0 && <span className="bg-white text-[#6b8a4e] rounded-full text-[10px] font-black w-4 h-4 flex items-center justify-center">{cart.length}</span>}
+            </button>
+          </div>
+
           {/* Add New Product Button */}
           <button
             onClick={() => openAddModal()}
@@ -418,9 +542,116 @@ export default function ScannerPage() {
           </Card>
         </div>
 
-        {/* Right: Matched Product & Quick Action Center (7 cols) */}
+        {/* Right: Cart (POS mode) or Product info (Lookup mode) */}
         <div className="lg:col-span-7 space-y-4">
-          {scannedProduct ? (
+
+          {/* ── POS CART ─────────────────────────────────────────────── */}
+          {pageMode === "pos" && (
+            <Card className="border-slate-200/80 rounded-[26px] overflow-hidden">
+              <div className="bg-[#1e2e14] text-white px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ShoppingCart className="h-5 w-5 text-[#6b8a4e]" />
+                  <div>
+                    <div className="text-sm font-bold">Quick Sale Cart</div>
+                    <div className="text-[11px] text-slate-400">{cart.length} item{cart.length !== 1 ? "s" : ""} · {activeWarehouse?.name}</div>
+                  </div>
+                </div>
+                {cart.length > 0 && (
+                  <button onClick={() => setCart([])} className="text-[11px] text-slate-400 hover:text-rose-400 flex items-center gap-1 transition-colors">
+                    <Trash2 className="h-3.5 w-3.5" /> Clear
+                  </button>
+                )}
+              </div>
+
+              <CardContent className="p-0">
+                {cart.length === 0 ? (
+                  <div className="py-16 text-center text-slate-400">
+                    <ShoppingCart className="h-10 w-10 mx-auto mb-3 stroke-1 text-slate-300" />
+                    <p className="text-sm font-semibold text-slate-500">Cart is empty</p>
+                    <p className="text-xs mt-1">Scan a barcode to add items</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="divide-y divide-slate-100">
+                      {cart.map((item, idx) => (
+                        <div key={item.product.id} className="flex items-center gap-3 px-5 py-3.5">
+                          <div className="h-10 w-10 rounded-xl bg-[#6b8a4e]/10 flex items-center justify-center text-[#6b8a4e] font-black text-xs shrink-0">
+                            {item.product.name.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-slate-900 text-xs truncate">{item.product.name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{item.product.sku}</div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button onClick={() => setCart(prev => prev.map((c, i) => i === idx ? { ...c, quantity: Math.max(1, c.quantity - 1) } : c))}
+                              className="h-6 w-6 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors">
+                              <Minus className="h-3 w-3" />
+                            </button>
+                            <span className="w-7 text-center text-sm font-bold text-slate-900">{item.quantity}</span>
+                            <button onClick={() => setCart(prev => prev.map((c, i) => i === idx ? { ...c, quantity: c.quantity + 1 } : c))}
+                              className="h-6 w-6 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors">
+                              <Plus className="h-3 w-3" />
+                            </button>
+                          </div>
+                          <div className="text-right shrink-0 w-20">
+                            <div className="text-xs font-bold text-slate-900">{formatCurrency(item.unitPrice * item.quantity)}</div>
+                            <div className="text-[10px] text-slate-400">{formatCurrency(item.unitPrice)} each</div>
+                          </div>
+                          <button onClick={() => setCart(prev => prev.filter((_, i) => i !== idx))}
+                            className="h-7 w-7 rounded-xl hover:bg-rose-50 text-slate-300 hover:text-rose-500 flex items-center justify-center transition-colors shrink-0">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Total + Checkout */}
+                    <div className="border-t border-slate-100 px-5 py-4 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold text-slate-500">Subtotal ({cart.reduce((s, i) => s + i.quantity, 0)} items)</span>
+                        <span className="text-lg font-black text-slate-900">{formatCurrency(cartTotal)}</span>
+                      </div>
+                      <button
+                        onClick={() => setCheckoutOpen(true)}
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#6b8a4e] hover:bg-[#5a7840] text-white text-sm font-bold transition-all active:scale-[0.98] shadow"
+                      >
+                        <Receipt className="h-4 w-4" /> Checkout — {formatCurrency(cartTotal)}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ── ORDER SUCCESS BANNER ──────────────────────────────────── */}
+          {checkoutDone && (
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                <div>
+                  <div className="text-sm font-bold text-emerald-800">Order Created!</div>
+                  <div className="text-xs text-emerald-600">Order number: <strong>{checkoutDone}</strong></div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {invoiceData && (
+                  <button
+                    onClick={() => setInvoiceData(invoiceData)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1e2e14] text-white text-xs font-bold rounded-xl hover:bg-[#2d4020] transition-colors"
+                  >
+                    <Printer className="h-3.5 w-3.5" /> វិក្កយបត្រ
+                  </button>
+                )}
+                <button onClick={() => { setCheckoutDone(null); setInvoiceData(null); }} className="text-emerald-400 hover:text-emerald-600">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── LOOKUP MODE ──────────────────────────────────────────── */}
+          {pageMode === "lookup" && (scannedProduct ? (
             <Card className="border-slate-200/80 dark:border-slate-800/80 overflow-hidden shadow-premium rounded-[26px]">
               <div className="bg-[#1e2e14] text-white p-6">
                 <div className="flex items-start gap-4">
@@ -657,7 +888,7 @@ export default function ScannerPage() {
                 {t("scanner_awaiting_sub")}
               </p>
             </Card>
-          )}
+          ))}
         </div>
       </div>
 
@@ -898,6 +1129,65 @@ export default function ScannerPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Checkout Modal */}
+      <Modal isOpen={checkoutOpen} onClose={() => setCheckoutOpen(false)} title="Checkout" description="Confirm the sale and create a sales order." size="md">
+        <form onSubmit={handleCheckout} className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">Customer <span className="text-slate-400 font-normal">(optional)</span></label>
+            <select
+              value={checkoutCustomerId}
+              onChange={(e) => setCheckoutCustomerId(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800"
+            >
+              <option value="">— Walk-in customer —</option>
+              {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+
+          <div className="rounded-xl bg-slate-50 border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+            {cart.map((item) => (
+              <div key={item.product.id} className="flex justify-between items-center px-4 py-2.5 text-xs">
+                <span className="font-semibold text-slate-800">{item.product.name} <span className="text-slate-400">× {item.quantity}</span></span>
+                <span className="font-bold text-slate-900">{formatCurrency(item.unitPrice * item.quantity)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between items-center px-4 py-3 bg-white">
+              <span className="text-sm font-bold text-slate-900">Total</span>
+              <span className="text-lg font-black text-[#6b8a4e]">{formatCurrency(cartTotal)}</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">Notes</label>
+            <Input placeholder="Optional notes…" value={checkoutNotes} onChange={(e) => setCheckoutNotes(e.target.value)} className="rounded-xl" />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setCheckoutOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={checkoutLoading || cart.length === 0} className="bg-[#6b8a4e] hover:bg-[#5a7840] text-white gap-2">
+              <Receipt className="h-4 w-4" />
+              {checkoutLoading ? "Creating…" : `Confirm Sale · ${formatCurrency(cartTotal)}`}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {invoiceData && (
+        <KhmerInvoice
+          orderNumber={invoiceData.orderNumber}
+          orderDate={invoiceData.orderDate}
+          customerName={invoiceData.customerName}
+          warehouseName={invoiceData.warehouseName}
+          items={invoiceData.items}
+          subtotal={invoiceData.subtotal}
+          discount={invoiceData.discount}
+          tax={invoiceData.tax}
+          total={invoiceData.total}
+          notes={invoiceData.notes}
+          onClose={() => setInvoiceData(null)}
+        />
+      )}
     </div>
   );
 }

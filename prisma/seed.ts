@@ -11,11 +11,10 @@ import {
   INITIAL_PRODUCTS,
 } from "../lib/mock-data";
 
-// Resolve absolute path to the DB file (seed.ts is in prisma/ dir)
-const dbPath = path.resolve(process.cwd(), "prisma", "dev.db");
-const dbUrl = `file:${dbPath}`;
+const dbUrl = process.env.DATABASE_URL || `file:${path.resolve(process.cwd(), "prisma", "dev.db")}`;
+const authToken = process.env.TURSO_AUTH_TOKEN;
 
-const adapter = new PrismaLibSql({ url: dbUrl });
+const adapter = new PrismaLibSql({ url: dbUrl, ...(authToken ? { authToken } : {}) });
 const prisma = new PrismaClient({ adapter } as any);
 
 async function main() {
