@@ -27,6 +27,21 @@ export default function LoginPage() {
     reset();
   };
 
+  const saveCredential = async (credEmail: string, credPassword: string, credName?: string) => {
+    try {
+      if (typeof window !== "undefined" && "PasswordCredential" in window) {
+        const cred = new (window as any).PasswordCredential({
+          id: credEmail,
+          password: credPassword,
+          name: credName || credEmail,
+        });
+        await navigator.credentials.store(cred);
+      }
+    } catch {
+      // silently ignore — credential saving is optional
+    }
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -40,6 +55,7 @@ export default function LoginPage() {
       });
       const json = await res.json();
       if (res.ok) {
+        await saveCredential(email, password, json.user?.name);
         router.push("/");
         router.refresh();
       } else {
@@ -67,6 +83,7 @@ export default function LoginPage() {
       });
       const json = await res.json();
       if (res.ok) {
+        await saveCredential(email, password, name.trim());
         router.push("/");
         router.refresh();
       } else {
@@ -130,12 +147,13 @@ export default function LoginPage() {
 
             {/* SIGN IN FORM */}
             {tab === "signin" && (
-              <form onSubmit={handleSignIn} className="space-y-5">
+              <form id="login-form" onSubmit={handleSignIn} className="space-y-5">
                 <div className="space-y-1.5">
                   <label className="block text-sm font-medium text-[#1e2e14]">Email address</label>
                   <input
                     type="email"
-                    autoComplete="email"
+                    name="username"
+                    autoComplete="username email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-[#d4ddd4] bg-white text-sm text-[#1e2e14] placeholder:text-[#aab8a0] outline-none focus:border-[#6b8a4e] transition-colors"
@@ -148,6 +166,7 @@ export default function LoginPage() {
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
+                      name="password"
                       autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -170,11 +189,12 @@ export default function LoginPage() {
 
             {/* REGISTER FORM */}
             {tab === "register" && (
-              <form onSubmit={handleRegister} className="space-y-5">
+              <form id="register-form" onSubmit={handleRegister} className="space-y-5">
                 <div className="space-y-1.5">
                   <label className="block text-sm font-medium text-[#1e2e14]">Full name</label>
                   <input
                     type="text"
+                    name="name"
                     autoComplete="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -187,7 +207,8 @@ export default function LoginPage() {
                   <label className="block text-sm font-medium text-[#1e2e14]">Email address</label>
                   <input
                     type="email"
-                    autoComplete="email"
+                    name="username"
+                    autoComplete="username email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-[#d4ddd4] bg-white text-sm text-[#1e2e14] placeholder:text-[#aab8a0] outline-none focus:border-[#6b8a4e] transition-colors"
@@ -200,6 +221,7 @@ export default function LoginPage() {
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
+                      name="password"
                       autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
