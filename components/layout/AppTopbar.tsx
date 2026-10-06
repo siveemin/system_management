@@ -20,6 +20,17 @@ export function AppTopbar() {
   }, []);
 
   useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
+
+  useEffect(() => {
     const saved = localStorage.getItem("theme");
     if (saved === "dark") {
       document.documentElement.classList.add("dark");
@@ -66,7 +77,15 @@ export function AppTopbar() {
         <div className="flex items-center gap-1">
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-[#5a7040] hover:bg-[#d4e8d4] transition-colors"
+            className="hidden sm:flex items-center gap-2 h-9 px-3.5 rounded-xl bg-white dark:bg-[#1a2410] border border-[#c8d8c0] dark:border-[#2d4020] text-slate-400 hover:border-[#6b8a4e] hover:text-[#6b8a4e] transition-all shadow-xs text-xs font-medium"
+          >
+            <Search className="h-3.5 w-3.5 shrink-0" />
+            <span>Search…</span>
+            <kbd className="ml-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-400 hidden md:block">⌘K</kbd>
+          </button>
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex sm:hidden h-9 w-9 items-center justify-center rounded-xl text-[#5a7040] hover:bg-[#d4e8d4] transition-colors"
           >
             <Search className="h-5 w-5" />
           </button>
