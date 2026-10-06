@@ -79,7 +79,7 @@ export default function ProductsPage() {
     setIsCreateOpen(true);
   };
 
-  const openEdit = (p: ProductDTO) => {
+  const openEdit = (p: any) => {
     setForm({
       name: p.name, sku: p.sku, barcode: p.barcode ?? "", description: p.description ?? "",
       uom: p.uom, costPrice: p.costPrice, sellingPrice: p.sellingPrice,
