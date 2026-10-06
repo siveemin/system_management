@@ -726,6 +726,18 @@ class InventoryDataStore {
     return newSO;
   }
 
+  public updateSalesOrderAmounts(soId: string, discountPct: number, taxPct: number): { success: boolean; error?: string } {
+    const so = this.salesOrders.find((s) => s.id === soId);
+    if (!so) return { success: false, error: "Sales Order not found" };
+    const disc = so.subtotal * (discountPct / 100);
+    const tax = (so.subtotal - disc) * (taxPct / 100);
+    so.discount = disc;
+    so.tax = tax;
+    so.totalAmount = so.subtotal - disc + tax;
+    this.notify();
+    return { success: true };
+  }
+
   public confirmSalesOrder(soId: string): { success: boolean; error?: string } {
     const so = this.salesOrders.find((s) => s.id === soId);
     if (!so) return { success: false, error: "Sales Order not found" };

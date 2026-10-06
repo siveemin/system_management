@@ -68,9 +68,12 @@ export async function PUT(
     const order = await prisma.salesOrder.update({
       where: { id },
       data: {
-        status: body.status,
-        notes: body.notes,
-        deliveryDate: body.deliveryDate ? new Date(body.deliveryDate) : undefined,
+        ...(body.status !== undefined && { status: body.status }),
+        ...(body.notes !== undefined && { notes: body.notes }),
+        ...(body.deliveryDate !== undefined && { deliveryDate: body.deliveryDate ? new Date(body.deliveryDate) : null }),
+        ...(body.discount !== undefined && { discount: body.discount }),
+        ...(body.tax !== undefined && { tax: body.tax }),
+        ...(body.totalAmount !== undefined && { totalAmount: body.totalAmount }),
       },
     });
 

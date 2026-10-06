@@ -2,153 +2,250 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Package, Loader2 } from "lucide-react";
-
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
-});
-
-type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const [tab, setTab] = useState<"signin" | "register">("signin");
+
+  // shared
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
-  });
+  const reset = () => {
+    setName(""); setEmail(""); setPassword("");
+    setError(null); setSuccess(null);
+  };
 
-  const onSubmit = async (data: LoginForm) => {
-    setServerError(null);
+  const switchTab = (t: "signin" | "register") => {
+    setTab(t);
+    reset();
+  };
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!email || !password) { setError("Please enter your email and password."); return; }
+    setLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ email, password }),
       });
-
+      const json = await res.json();
       if (res.ok) {
         router.push("/");
         router.refresh();
       } else {
-        const json = await res.json();
-        setServerError(json.error || "Login failed. Please try again.");
+        setError(json.error || "Login failed. Please try again.");
       }
     } catch {
-      setServerError("Network error. Please check your connection.");
+      setError("Network error. Please check your connection.");
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!name.trim()) { setError("Please enter your full name."); return; }
+    if (!email) { setError("Please enter your email address."); return; }
+    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), email, password }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        router.push("/");
+        router.refresh();
+      } else {
+        setError(json.error || "Registration failed. Please try again.");
+      }
+    } catch {
+      setError("Network error. Please check your connection.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fillDemo = (demoEmail: string) => {
+    setEmail(demoEmail);
+    setPassword("password123");
+    setError(null);
+  };
+
   return (
-    <div className="min-h-screen bg-[#edf2ed] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#edf2ed] flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
-        {/* Logo / Brand */}
+
+        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-[#6b8a4e] rounded-2xl mb-4 shadow-lg">
             <Package className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-[#1e2e14]">Smart Inventory</h1>
-          <p className="text-[#5a7040] mt-1 text-sm">Sign in to your account</p>
+          <p className="text-[#5a7040] mt-1 text-sm">
+            {tab === "signin" ? "Sign in to your account" : "Create a new account"}
+          </p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-[#d4ddd4] p-8">
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
-            {/* Server error */}
-            {serverError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
-                {serverError}
+        <div className="bg-white rounded-2xl shadow-sm border border-[#d4ddd4] overflow-hidden">
+
+          {/* Tab switcher */}
+          <div className="flex border-b border-[#d4ddd4]">
+            {(["signin", "register"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => switchTab(t)}
+                className={`flex-1 py-3.5 text-sm font-semibold transition-colors ${
+                  tab === t
+                    ? "bg-white text-[#1e2e14] border-b-2 border-[#6b8a4e]"
+                    : "bg-[#f7faf7] text-[#5a7040] hover:bg-[#edf2ed]"
+                }`}
+              >
+                {t === "signin" ? "Sign In" : "Create Account"}
+              </button>
+            ))}
+          </div>
+
+          <div className="p-8">
+            {/* Error */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm mb-5">
+                {error}
               </div>
             )}
 
-            {/* Email */}
-            <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-sm font-medium text-[#1e2e14]">
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                {...register("email")}
-                className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors
-                  ${errors.email
-                    ? "border-red-400 bg-red-50 focus:border-red-500"
-                    : "border-[#d4ddd4] bg-white focus:border-[#6b8a4e]"
-                  } text-[#1e2e14] placeholder:text-[#aab8a0]`}
-                placeholder="you@company.com"
-              />
-              {errors.email && (
-                <p className="text-red-600 text-xs mt-1">{errors.email.message}</p>
-              )}
-            </div>
+            {/* SIGN IN FORM */}
+            {tab === "signin" && (
+              <form onSubmit={handleSignIn} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-[#1e2e14]">Email address</label>
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-[#d4ddd4] bg-white text-sm text-[#1e2e14] placeholder:text-[#aab8a0] outline-none focus:border-[#6b8a4e] transition-colors"
+                    placeholder="you@company.com"
+                  />
+                </div>
 
-            {/* Password */}
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="block text-sm font-medium text-[#1e2e14]">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  {...register("password")}
-                  className={`w-full px-4 py-3 pr-11 rounded-xl border text-sm outline-none transition-colors
-                    ${errors.password
-                      ? "border-red-400 bg-red-50 focus:border-red-500"
-                      : "border-[#d4ddd4] bg-white focus:border-[#6b8a4e]"
-                    } text-[#1e2e14] placeholder:text-[#aab8a0]`}
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5a7040] hover:text-[#1e2e14] transition-colors"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-[#1e2e14]">Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-3 pr-11 rounded-xl border border-[#d4ddd4] bg-white text-sm text-[#1e2e14] placeholder:text-[#aab8a0] outline-none focus:border-[#6b8a4e] transition-colors"
+                      placeholder="Enter your password"
+                    />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5a7040] hover:text-[#1e2e14] transition-colors">
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button type="submit" disabled={loading}
+                  className="w-full bg-[#6b8a4e] hover:bg-[#5a7640] disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2">
+                  {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</> : "Sign In"}
                 </button>
-              </div>
-              {errors.password && (
-                <p className="text-red-600 text-xs mt-1">{errors.password.message}</p>
-              )}
+              </form>
+            )}
+
+            {/* REGISTER FORM */}
+            {tab === "register" && (
+              <form onSubmit={handleRegister} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-[#1e2e14]">Full name</label>
+                  <input
+                    type="text"
+                    autoComplete="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-[#d4ddd4] bg-white text-sm text-[#1e2e14] placeholder:text-[#aab8a0] outline-none focus:border-[#6b8a4e] transition-colors"
+                    placeholder="Your full name"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-[#1e2e14]">Email address</label>
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-[#d4ddd4] bg-white text-sm text-[#1e2e14] placeholder:text-[#aab8a0] outline-none focus:border-[#6b8a4e] transition-colors"
+                    placeholder="you@company.com"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-[#1e2e14]">Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-3 pr-11 rounded-xl border border-[#d4ddd4] bg-white text-sm text-[#1e2e14] placeholder:text-[#aab8a0] outline-none focus:border-[#6b8a4e] transition-colors"
+                      placeholder="At least 6 characters"
+                    />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5a7040] hover:text-[#1e2e14] transition-colors">
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-[#8a9e7a]">Minimum 6 characters. Your account will start with Staff role.</p>
+                </div>
+
+                <button type="submit" disabled={loading}
+                  className="w-full bg-[#6b8a4e] hover:bg-[#5a7640] disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2">
+                  {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating account...</> : "Create Account"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+
+        {/* Quick login (sign in tab only) */}
+        {tab === "signin" && (
+          <div className="mt-4 bg-white rounded-2xl border border-[#d4ddd4] px-4 py-4">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide text-center mb-3">Quick Login</p>
+            <div className="flex flex-col gap-2">
+              {[
+                { label: "Admin", email: "admin@smartinventory.io", color: "bg-[#1e2e14] text-white hover:bg-[#2d4020]" },
+                { label: "Warehouse Manager", email: "warehouse@smartinventory.io", color: "bg-[#edf2ed] text-[#1e2e14] hover:bg-[#d4e6c3]" },
+                { label: "Sales Manager", email: "sales@smartinventory.io", color: "bg-[#edf2ed] text-[#1e2e14] hover:bg-[#d4e6c3]" },
+              ].map(({ label, email: demoEmail, color }) => (
+                <button key={demoEmail} type="button" onClick={() => fillDemo(demoEmail)}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs font-semibold transition-colors flex items-center justify-between ${color}`}>
+                  <span>{label}</span>
+                  <span className="opacity-60 font-normal">{demoEmail}</span>
+                </button>
+              ))}
             </div>
+            <p className="text-[10px] text-slate-400 text-center mt-3">
+              Password: <span className="font-mono font-semibold">password123</span>
+            </p>
+          </div>
+        )}
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-[#6b8a4e] hover:bg-[#5a7640] disabled:opacity-60 disabled:cursor-not-allowed
-                text-white font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 mt-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign in"
-              )}
-            </button>
-          </form>
-        </div>
-
-        {/* Demo credentials hint */}
-        <div className="mt-4 text-center text-xs text-[#5a7040] bg-white/60 rounded-xl px-4 py-3 border border-[#d4ddd4]">
-          <span className="font-medium">Demo accounts:</span> admin@smartinventory.io · warehouse@smartinventory.io · sales@smartinventory.io
-          <br />
-          <span className="font-medium">Password:</span> password123
-        </div>
       </div>
     </div>
   );
