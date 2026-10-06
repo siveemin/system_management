@@ -43,7 +43,7 @@ export default function LoginPage() {
       const json = await res.json();
       if (res.ok) {
         await saveCredential(email, password, json.user?.name);
-        router.push("/"); router.refresh();
+        window.location.href = "/";
       } else {
         setError(json.error || "Login failed. Please try again.");
       }
@@ -67,7 +67,7 @@ export default function LoginPage() {
       const json = await res.json();
       if (res.ok) {
         await saveCredential(email, password, name.trim());
-        router.push("/"); router.refresh();
+        window.location.href = "/";
       } else {
         setError(json.error || "Registration failed. Please try again.");
       }
