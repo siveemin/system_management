@@ -1,10 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Truck, Plus, Search, Edit2, CheckCircle2, AlertCircle } from "lucide-react";
-import dataStore from "@/lib/store";
 import { useTranslation } from "@/lib/useTranslation";
-import { SupplierDTO } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
@@ -18,31 +16,35 @@ const EMPTY_FORM = {
 
 export default function SuppliersPage() {
   const { t } = useTranslation();
-  const [suppliers, setSuppliers] = useState<SupplierDTO[]>(dataStore.getSuppliers());
+  const [suppliers, setSuppliers] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editSupplier, setEditSupplier] = useState<SupplierDTO | null>(null);
+  const [editSupplier, setEditSupplier] = useState<any | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [saving, setSaving] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
-  useEffect(() => {
-    return dataStore.subscribe(() => setSuppliers(dataStore.getSuppliers()));
+  const load = useCallback(async () => {
+    const res = await fetch("/api/suppliers");
+    if (res.ok) setSuppliers(await res.json());
   }, []);
 
-  const filtered = suppliers.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      (s.contactPerson ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (s.email ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (s.city ?? "").toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => { load(); }, [load]);
 
-  const openCreate = () => {
-    setForm({ ...EMPTY_FORM });
-    setIsCreateOpen(true);
+  const showMsg = (text: string, type: "success" | "error") => {
+    setActionMsg({ text, type });
+    setTimeout(() => setActionMsg(null), 3000);
   };
 
-  const openEdit = (s: SupplierDTO) => {
+  const filtered = suppliers.filter((s) =>
+    s.name.toLowerCase().includes(search.toLowerCase()) ||
+    (s.contactPerson ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (s.email ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (s.city ?? "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const openCreate = () => { setForm({ ...EMPTY_FORM }); setIsCreateOpen(true); };
+  const openEdit = (s: any) => {
     setForm({
       name: s.name, contactPerson: s.contactPerson ?? "", email: s.email ?? "",
       phone: s.phone ?? "", address: s.address ?? "", city: s.city ?? "",
@@ -51,32 +53,42 @@ export default function SuppliersPage() {
     setEditSupplier(s);
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name) return;
-    dataStore.createSupplier(form);
-    setIsCreateOpen(false);
-    showMsg(t("page_suppliers_created"), "success");
+    setSaving(true);
+    const res = await fetch("/api/suppliers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setSaving(false);
+    if (res.ok) {
+      setIsCreateOpen(false);
+      await load();
+      showMsg(t("page_suppliers_created"), "success");
+    } else {
+      showMsg("Failed to save. Please try again.", "error");
+    }
   };
 
-  const handleEdit = (e: React.FormEvent) => {
+  const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editSupplier) return;
-    const idx = dataStore.getSuppliers().findIndex((s) => s.id === editSupplier.id);
-    if (idx === -1) return;
-    // update via store notification pattern — patch via createSupplier replacement approach:
-    const updated = { ...editSupplier, ...form };
-    const all = dataStore.getSuppliers();
-    all.splice(idx, 1, updated);
-    dataStore["suppliers"] = all;
-    dataStore["notify"]();
-    setEditSupplier(null);
-    showMsg(t("page_suppliers_updated"), "success");
-  };
-
-  const showMsg = (text: string, type: "success" | "error") => {
-    setActionMsg({ text, type });
-    setTimeout(() => setActionMsg(null), 3000);
+    setSaving(true);
+    const res = await fetch(`/api/suppliers/${editSupplier.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setSaving(false);
+    if (res.ok) {
+      setEditSupplier(null);
+      await load();
+      showMsg(t("page_suppliers_updated"), "success");
+    } else {
+      showMsg("Failed to save. Please try again.", "error");
+    }
   };
 
   const field = (key: keyof typeof form, label: string, type = "text") => (
@@ -100,7 +112,7 @@ export default function SuppliersPage() {
       {field("address", t("label_address"))}
       <div>
         <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">{t("label_status")}</label>
-        <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as "ACTIVE" | "INACTIVE" }))}
+        <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as any }))}
           className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-800 dark:text-slate-200">
           <option value="ACTIVE">{t("status_active")}</option>
           <option value="INACTIVE">{t("status_inactive")}</option>
@@ -112,7 +124,9 @@ export default function SuppliersPage() {
           rows={2} className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs resize-none" />
       </div>
       <div className="flex justify-end pt-2">
-        <Button type="submit" className="bg-[#6b8a4e] hover:bg-[#5a7840] text-white text-xs font-semibold">{submitLabel}</Button>
+        <Button type="submit" disabled={saving} className="bg-[#6b8a4e] hover:bg-[#5a7840] text-white text-xs font-semibold">
+          {saving ? "Saving..." : submitLabel}
+        </Button>
       </div>
     </form>
   );
@@ -122,8 +136,7 @@ export default function SuppliersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <Truck className="h-6 w-6 text-[#6b8a4e]" />
-            {t("page_suppliers_title")}
+            <Truck className="h-6 w-6 text-[#6b8a4e]" /> {t("page_suppliers_title")}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {suppliers.length} {t("page_suppliers_title").toLowerCase()} · {suppliers.filter((s) => s.status === "ACTIVE").length} {t("status_active").toLowerCase()}
@@ -136,9 +149,7 @@ export default function SuppliersPage() {
 
       {actionMsg && (
         <div className={`p-3.5 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
-          actionMsg.type === "success"
-            ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300"
-            : "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300"
+          actionMsg.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-red-50 border-red-200 text-red-700"
         }`}>
           {actionMsg.type === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
           {actionMsg.text}
@@ -182,15 +193,13 @@ export default function SuppliersPage() {
                   <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
                     {[s.city, s.country].filter(Boolean).join(", ") || "—"}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-bold text-slate-900 dark:text-slate-100">
-                    {formatCurrency(s.totalPurchased ?? 0)}
-                  </td>
+                  <td className="py-3.5 px-4 text-right font-bold text-slate-900 dark:text-slate-100">{formatCurrency(s.totalPurchased ?? 0)}</td>
                   <td className="py-3.5 px-4 text-right text-slate-600 dark:text-slate-300">{s.purchaseOrdersCount ?? 0}</td>
                   <td className="py-3.5 px-4 text-center"><StatusBadge status={s.status} /></td>
                   <td className="py-3.5 px-4 text-slate-400">{formatDate(s.createdAt)}</td>
                   <td className="py-3.5 px-4 text-right">
                     <button onClick={() => openEdit(s)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-[#6b8a4e] hover:bg-[#edf2ed] dark:hover:bg-[#1a2a10] transition-colors">
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-[#6b8a4e] hover:bg-[#edf2ed] transition-colors">
                       <Edit2 className="h-3.5 w-3.5" />
                     </button>
                   </td>
@@ -204,9 +213,7 @@ export default function SuppliersPage() {
       <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title={t("page_suppliers_create_title")} size="md">
         <SupplierForm onSubmit={handleCreate} submitLabel={t("page_suppliers_create_btn")} />
       </Modal>
-
-      <Modal isOpen={!!editSupplier} onClose={() => setEditSupplier(null)} title={t("page_suppliers_edit_title")}
-        description={editSupplier?.name} size="md">
+      <Modal isOpen={!!editSupplier} onClose={() => setEditSupplier(null)} title={t("page_suppliers_edit_title")} description={editSupplier?.name} size="md">
         <SupplierForm onSubmit={handleEdit} submitLabel={t("btn_save")} />
       </Modal>
     </div>

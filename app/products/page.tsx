@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   PackagePlus, Search, Edit2, Package, CheckCircle2, AlertCircle, Camera, X, Barcode, Download,
 } from "lucide-react";
 import { exportToExcel } from "@/lib/export";
-import dataStore from "@/lib/store";
 import { useTranslation } from "@/lib/useTranslation";
-import { ProductDTO, CategoryDTO, SupplierDTO, WarehouseDTO } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
@@ -25,32 +23,38 @@ const EMPTY_FORM = {
 
 export default function ProductsPage() {
   const { t } = useTranslation();
-  const [products, setProducts] = useState<ProductDTO[]>(dataStore.getProducts());
-  const [categories, setCategories] = useState<CategoryDTO[]>(dataStore.getCategories());
-  const [suppliers, setSuppliers] = useState<SupplierDTO[]>(dataStore.getSuppliers());
-  const [warehouses, setWarehouses] = useState<WarehouseDTO[]>(dataStore.getWarehouses());
+  const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editProduct, setEditProduct] = useState<ProductDTO | null>(null);
+  const [editProduct, setEditProduct] = useState<any | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [initStock, setInitStock] = useState<Record<string, number>>({});
+  const [saving, setSaving] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [printProduct, setPrintProduct] = useState<ProductDTO | null>(null);
+  const [printProduct, setPrintProduct] = useState<any | null>(null);
   const [scanBarcodeMode, setScanBarcodeMode] = useState(false);
   const [quickCatOpen, setQuickCatOpen] = useState(false);
   const [quickCatName, setQuickCatName] = useState("");
 
-  useEffect(() => {
-    const update = () => {
-      setProducts(dataStore.getProducts());
-      setCategories(dataStore.getCategories());
-      setSuppliers(dataStore.getSuppliers());
-      setWarehouses(dataStore.getWarehouses());
-    };
-    return dataStore.subscribe(update);
+  const load = useCallback(async () => {
+    const [p, c, s, w] = await Promise.all([
+      fetch("/api/products").then(r => r.ok ? r.json() : []),
+      fetch("/api/categories").then(r => r.ok ? r.json() : []),
+      fetch("/api/suppliers").then(r => r.ok ? r.json() : []),
+      fetch("/api/warehouses").then(r => r.ok ? r.json() : []),
+    ]);
+    if (Array.isArray(p)) setProducts(p);
+    if (Array.isArray(c)) setCategories(c);
+    if (Array.isArray(s)) setSuppliers(s);
+    if (Array.isArray(w)) setWarehouses(w);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const filtered = products.filter((p) => {
     const matchSearch =
@@ -96,38 +100,42 @@ export default function ProductsPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.sku) return;
-    const cat = categories.find((c) => c.id === form.categoryId);
-    const sup = suppliers.find((s) => s.id === form.supplierId);
-    dataStore.createProduct({
-      ...form,
-      discountPercent: form.discountPercent || null,
-      categoryName: cat?.name ?? null,
-      supplierName: sup?.name ?? null,
-      imageUrl: form.imageUrl || null,
-      qrCode: null,
-      initialStockPerWarehouse: initStock,
+    setSaving(true);
+    const res = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, discountPercent: form.discountPercent || null, imageUrl: form.imageUrl || null }),
     });
-    setIsCreateOpen(false);
-    showMsg(t("page_products_created"), "success");
+    setSaving(false);
+    if (res.ok) {
+      setIsCreateOpen(false);
+      await load();
+      showMsg(t("page_products_created"), "success");
+    } else {
+      showMsg("Failed to save. Please try again.", "error");
+    }
   };
 
-  const handleEdit = (e: React.FormEvent) => {
+  const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editProduct) return;
-    const cat = categories.find((c) => c.id === form.categoryId);
-    const sup = suppliers.find((s) => s.id === form.supplierId);
-    dataStore.updateProduct(editProduct.id, {
-      ...form,
-      discountPercent: form.discountPercent || null,
-      categoryName: cat?.name ?? null,
-      supplierName: sup?.name ?? null,
-      imageUrl: form.imageUrl || null,
+    setSaving(true);
+    const res = await fetch(`/api/products/${editProduct.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, discountPercent: form.discountPercent || null, imageUrl: form.imageUrl || null }),
     });
-    setEditProduct(null);
-    showMsg(t("page_products_updated"), "success");
+    setSaving(false);
+    if (res.ok) {
+      setEditProduct(null);
+      await load();
+      showMsg(t("page_products_updated"), "success");
+    } else {
+      showMsg("Failed to save. Please try again.", "error");
+    }
   };
 
   const showMsg = (text: string, type: "success" | "error") => {
@@ -288,7 +296,9 @@ export default function ProductsPage() {
         </div>
       )}
       <div className="flex justify-end gap-2 pt-2">
-        <Button type="submit" className="bg-[#6b8a4e] hover:bg-[#5a7840] text-white text-xs font-semibold">{submitLabel}</Button>
+        <Button type="submit" disabled={saving} className="bg-[#6b8a4e] hover:bg-[#5a7840] text-white text-xs font-semibold">
+          {saving ? "Saving..." : submitLabel}
+        </Button>
       </div>
     </form>
   );
@@ -467,12 +477,21 @@ export default function ProductsPage() {
       {/* Quick-create category from product form */}
       <Modal isOpen={quickCatOpen} onClose={() => setQuickCatOpen(false)}
         title={t("page_categories_create_title")} size="sm">
-        <form onSubmit={(e) => {
+        <form onSubmit={async (e) => {
           e.preventDefault();
           if (!quickCatName.trim()) return;
-          const newCat = dataStore.createCategory({ name: quickCatName.trim() });
-          setForm((f) => ({ ...f, categoryId: newCat.id }));
-          setQuickCatOpen(false);
+          const res = await fetch("/api/categories", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: quickCatName.trim() }),
+          });
+          if (res.ok) {
+            const newCat = await res.json();
+            await load();
+            setForm((f) => ({ ...f, categoryId: newCat.id }));
+            setQuickCatName("");
+            setQuickCatOpen(false);
+          }
         }} className="space-y-4">
           <div>
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">

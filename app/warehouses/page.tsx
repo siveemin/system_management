@@ -1,10 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Warehouse, Plus, Search, MapPin, Phone, Mail, Eye } from "lucide-react";
-import dataStore from "@/lib/store";
+import React, { useState, useEffect, useCallback } from "react";
+import { Warehouse, Plus, Search, MapPin, Eye } from "lucide-react";
 import { useTranslation } from "@/lib/useTranslation";
-import { WarehouseDTO } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
@@ -13,11 +11,11 @@ import { formatCurrency } from "@/lib/utils";
 
 export default function WarehousesPage() {
   const { t } = useTranslation();
-  const [warehouses, setWarehouses] = useState<WarehouseDTO[]>(dataStore.getWarehouses());
-  const [products, setProducts] = useState(dataStore.getProducts());
+  const [warehouses, setWarehouses] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedWarehouse, setSelectedWarehouse] = useState<WarehouseDTO | null>(null);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<any | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
@@ -26,40 +24,34 @@ export default function WarehousesPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  useEffect(() => {
-    const update = () => {
-      setWarehouses(dataStore.getWarehouses());
-      setProducts(dataStore.getProducts());
-    };
-    return dataStore.subscribe(update);
+  const load = useCallback(async () => {
+    const res = await fetch("/api/warehouses");
+    if (res.ok) setWarehouses(await res.json());
   }, []);
 
-  const handleCreateWarehouse = (e: React.FormEvent) => {
+  useEffect(() => { load(); }, [load]);
+
+  const handleCreateWarehouse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !code) return;
-    dataStore.createWarehouse({ name, code: code.toUpperCase(), address, managerName, phone, email, status: "ACTIVE" });
-    setIsAddModalOpen(false);
-    setName(""); setCode(""); setAddress(""); setManagerName(""); setPhone(""); setEmail("");
+    setSaving(true);
+    const res = await fetch("/api/warehouses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, code: code.toUpperCase(), address, managerName, phone, email, status: "ACTIVE" }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      setIsAddModalOpen(false);
+      setName(""); setCode(""); setAddress(""); setManagerName(""); setPhone(""); setEmail("");
+      await load();
+    }
   };
 
   const filtered = warehouses.filter((w) => {
     const q = searchTerm.toLowerCase();
     return w.name.toLowerCase().includes(q) || w.code.toLowerCase().includes(q) || (w.address && w.address.toLowerCase().includes(q));
   });
-
-  const getWarehouseValue = (warehouseId: string) => {
-    return products.reduce((total, p) => {
-      const inv = p.inventories?.find((i) => i.warehouseId === warehouseId);
-      return total + (inv?.quantity || 0) * p.costPrice;
-    }, 0);
-  };
-
-  const getWarehouseStock = (warehouseId: string) => {
-    return products.reduce((total, p) => {
-      const inv = p.inventories?.find((i) => i.warehouseId === warehouseId);
-      return total + (inv?.quantity || 0);
-    }, 0);
-  };
 
   return (
     <div className="space-y-5">
@@ -85,8 +77,8 @@ export default function WarehousesPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {filtered.map((w) => {
-          const totalStock = getWarehouseStock(w.id);
-          const totalValue = getWarehouseValue(w.id);
+          const totalStock = 0;
+          const totalValue = 0;
           return (
             <div key={w.id} className="border border-slate-200/80 bg-white rounded-[28px] shadow-premium p-6 flex flex-col gap-4">
               <div className="flex items-start justify-between">
@@ -159,7 +151,7 @@ export default function WarehousesPage() {
           </div>
           <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
             <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>{t("btn_cancel")}</Button>
-            <Button type="submit" className="bg-[#6b8a4e] hover:bg-[#E63B13] text-white">{t("wh_create_btn")}</Button>
+            <Button type="submit" disabled={saving} className="bg-[#6b8a4e] hover:bg-[#5a7840] text-white">{saving ? "Saving..." : t("wh_create_btn")}</Button>
           </div>
         </form>
       </Modal>
