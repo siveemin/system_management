@@ -125,22 +125,27 @@ function buildPrintHTML(props: Omit<KhmerInvoiceProps, "onClose">, rate: number)
     <tbody>
       ${itemRows}
       <tr>
-        <td class="note-cell" colspan="3" rowspan="3">
+        <td class="note-cell" colspan="3" rowspan="4">
           បញ្ជាក់: មុនចុះហត្ថលេខាសូមមានពិនិត្យ<br/>ទិន្នន័យត្រឹមត្រូវមុនតែចុះហត្ថលេខា។
         </td>
-        <td class="total-label" colspan="2">សរុប &nbsp; TOTAL</td>
+        <td class="total-label" colspan="2">សរុបរង &nbsp; SUB TOTAL</td>
         <td style="text-align:right;font-weight:bold">${fmt(subtotal)}</td>
         <td style="text-align:right">${fmtKHR(subtotal, rate)}</td>
       </tr>
       <tr>
-        <td class="total-label" colspan="2">ប្រាក់កក់ &nbsp; DEPOSIT</td>
-        <td></td>
-        <td></td>
+        <td class="total-label" colspan="2">បញ្ចុះតម្លៃ &nbsp; DISCOUNT</td>
+        <td style="text-align:right">${discount > 0 ? fmt(discount) : "—"}</td>
+        <td style="text-align:right">${discount > 0 ? fmtKHR(discount, rate) : "—"}</td>
       </tr>
       <tr>
-        <td class="total-label" colspan="2">នៅខ្វះ &nbsp; BALANCE</td>
-        <td style="text-align:right;font-weight:bold">${fmt(total)}</td>
-        <td style="text-align:right">${fmtKHR(total, rate)}</td>
+        <td class="total-label" colspan="2">ពន្ធ &nbsp; TAX</td>
+        <td style="text-align:right">${tax > 0 ? fmt(tax) : "—"}</td>
+        <td style="text-align:right">${tax > 0 ? fmtKHR(tax, rate) : "—"}</td>
+      </tr>
+      <tr>
+        <td class="total-label" colspan="2" style="background:#f5f5f5">សរុបទូទៅ &nbsp; TOTAL</td>
+        <td style="text-align:right;font-weight:bold;background:#f5f5f5">${fmt(total)}</td>
+        <td style="text-align:right;background:#f5f5f5">${fmtKHR(total, rate)}</td>
       </tr>
     </tbody>
   </table>
@@ -272,24 +277,29 @@ export function KhmerInvoice(props: KhmerInvoiceProps) {
                   <td className="border border-black text-right px-1">{fmtKHR(item.totalAmount, rate)}</td>
                 </tr>
               ))}
-              {/* TOTAL / DEPOSIT / BALANCE */}
+              {/* Summary rows */}
               <tr>
-                <td className="border border-black text-[8.5px] leading-5 px-1 align-top" colSpan={3} rowSpan={3}>
+                <td className="border border-black text-[8.5px] leading-5 px-1 align-top" colSpan={3} rowSpan={4}>
                   បញ្ជាក់: មុនចុះហត្ថលេខាសូមមានពិនិត្យ<br/>ទិន្នន័យត្រឹមត្រូវមុនតែចុះហត្ថលេខា។
                 </td>
-                <td className="border border-black text-right font-bold px-2" colSpan={2}>សរុប &nbsp; TOTAL</td>
+                <td className="border border-black text-right font-bold px-2" colSpan={2}>សរុបរង &nbsp; SUB TOTAL</td>
                 <td className="border border-black text-right font-bold px-1">{fmt(subtotal)}</td>
                 <td className="border border-black text-right px-1">{fmtKHR(subtotal, rate)}</td>
               </tr>
               <tr>
-                <td className="border border-black text-right font-bold px-2" colSpan={2}>ប្រាក់កក់ &nbsp; DEPOSIT</td>
-                <td className="border border-black"></td>
-                <td className="border border-black"></td>
+                <td className="border border-black text-right font-bold px-2" colSpan={2}>បញ្ចុះតម្លៃ &nbsp; DISCOUNT</td>
+                <td className="border border-black text-right px-1">{discount > 0 ? fmt(discount) : "—"}</td>
+                <td className="border border-black text-right px-1">{discount > 0 ? fmtKHR(discount, rate) : "—"}</td>
               </tr>
               <tr>
-                <td className="border border-black text-right font-bold px-2" colSpan={2}>នៅខ្វះ &nbsp; BALANCE</td>
-                <td className="border border-black text-right font-bold px-1">{fmt(total)}</td>
-                <td className="border border-black text-right px-1">{fmtKHR(total, rate)}</td>
+                <td className="border border-black text-right font-bold px-2" colSpan={2}>ពន្ធ &nbsp; TAX</td>
+                <td className="border border-black text-right px-1">{tax > 0 ? fmt(tax) : "—"}</td>
+                <td className="border border-black text-right px-1">{tax > 0 ? fmtKHR(tax, rate) : "—"}</td>
+              </tr>
+              <tr>
+                <td className="border border-black text-right font-bold px-2 bg-slate-50" colSpan={2}>សរុបទូទៅ &nbsp; TOTAL</td>
+                <td className="border border-black text-right font-bold px-1 bg-slate-50">{fmt(total)}</td>
+                <td className="border border-black text-right px-1 bg-slate-50">{fmtKHR(total, rate)}</td>
               </tr>
             </tbody>
           </table>
