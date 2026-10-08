@@ -4,8 +4,9 @@ import React, { useState, useEffect } from "react";
 import {
   User, Save, CheckCircle2, Bell, Barcode, Database,
   DollarSign, Languages, Shield, ChevronRight, Warehouse,
-  Package, LogOut, Moon, Sun, Globe,
+  Package, LogOut, Moon, Sun, Globe, Building2,
 } from "lucide-react";
+import { getSystemName, setSystemName } from "@/lib/systemName";
 import { CurrencyCode } from "@/lib/utils";
 import { Language } from "@/lib/i18n";
 import { useTranslation } from "@/lib/useTranslation";
@@ -157,10 +158,12 @@ export default function SettingsPage() {
   const [language, setLanguageState] = useState<Language>(dataStore.getLanguage());
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [activeSection, setActiveSection] = useState("general");
+  const [systemName, setSystemNameState] = useState("");
 
   useEffect(() => {
     setCurrentUser(dataStore.getCurrentUser());
     setWarehouses(dataStore.getWarehouses());
+    setSystemNameState(getSystemName());
   }, []);
 
   const handleCurrencyChange = (cur: CurrencyCode) => {
@@ -175,6 +178,7 @@ export default function SettingsPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    setSystemName(systemName);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
   };
@@ -252,6 +256,18 @@ export default function SettingsPage() {
         {/* ── General ── */}
         {activeSection === "general" && (
           <>
+            <SectionCard icon={Building2} title="System Name" description="The name shown in the topbar and on invoices">
+              <SettingRow label="Business / System Name" description="Appears on the invoice header and navigation bar">
+                <input
+                  value={systemName}
+                  onChange={(e) => setSystemNameState(e.target.value)}
+                  placeholder="e.g. Smart Inventory"
+                  maxLength={40}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-[#18181B] focus:outline-none focus:border-[#6b8a4e] w-52 transition-colors"
+                />
+              </SettingRow>
+            </SectionCard>
+
             <SectionCard icon={DollarSign} title="Currency" description="Choose your display currency for all monetary values">
               <SettingRow label="Display Currency" description="Applied across all prices, orders, and reports">
                 <PillSelector<CurrencyCode>

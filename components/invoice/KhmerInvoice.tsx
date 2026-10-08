@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Printer, X } from "lucide-react";
+import { getSystemName } from "@/lib/systemName";
 
 interface InvoiceItem {
   productName: string;
@@ -30,7 +31,7 @@ const DEFAULT_RATE = 4000;
 function fmt(n: number) { return "$" + n.toFixed(2); }
 function fmtKHR(n: number, rate: number) { return (Math.round(n * rate)).toLocaleString(); }
 
-function buildPrintHTML(props: Omit<KhmerInvoiceProps, "onClose">, rate: number) {
+function buildPrintHTML(props: Omit<KhmerInvoiceProps, "onClose">, rate: number, sysName: string) {
   const { orderNumber, orderDate, customerName, warehouseName, items, subtotal, discount = 0, tax = 0, total } = props;
 
   const d = new Date(orderDate);
@@ -88,7 +89,7 @@ function buildPrintHTML(props: Omit<KhmerInvoiceProps, "onClose">, rate: number)
   </style>
 </head>
 <body>
-  <div class="store-name">( Smart Inventory )</div>
+  <div class="store-name">( ${sysName} )</div>
 
   <div class="top-info">
     <div class="top-left">
@@ -169,9 +170,17 @@ function buildPrintHTML(props: Omit<KhmerInvoiceProps, "onClose">, rate: number)
 export function KhmerInvoice(props: KhmerInvoiceProps) {
   const { orderNumber, orderDate, customerName, warehouseName, items, subtotal, discount = 0, tax = 0, total, notes, onClose } = props;
   const [rate, setRate] = useState(DEFAULT_RATE);
+  const [sysName, setSysName] = useState("Smart Inventory");
+
+  useEffect(() => {
+    setSysName(getSystemName());
+    const handler = () => setSysName(getSystemName());
+    window.addEventListener("system_name_changed", handler);
+    return () => window.removeEventListener("system_name_changed", handler);
+  }, []);
 
   const handlePrint = () => {
-    const html = buildPrintHTML({ orderNumber, orderDate, customerName, warehouseName, items, subtotal, discount, tax, total, notes }, rate);
+    const html = buildPrintHTML({ orderNumber, orderDate, customerName, warehouseName, items, subtotal, discount, tax, total, notes }, rate, sysName);
     const win = window.open("", "_blank", "width=700,height=950");
     if (!win) return;
     win.document.write(html);
@@ -220,7 +229,7 @@ export function KhmerInvoice(props: KhmerInvoiceProps) {
         {/* Preview */}
         <div className="overflow-y-auto p-5 flex-1" style={{ fontFamily: "'Battambang', sans-serif" }}>
           {/* Store name */}
-          <div className="text-center text-base font-bold mb-3">( Smart Inventory )</div>
+          <div className="text-center text-base font-bold mb-3">( {sysName} )</div>
 
           {/* Top info */}
           <div className="grid grid-cols-3 gap-1 mb-3 text-[10px]">
