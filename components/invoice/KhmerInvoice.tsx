@@ -117,7 +117,7 @@ function buildPrintHTML(props: Omit<KhmerInvoiceProps, "onClose">, rate: number)
         <th class="col-name" style="text-align:center"><div class="th-kh">ឈ្មោះផលិតផល</div><div class="th-en">Name Of Products</div></th>
         <th class="col-unit" style="text-align:center"><div class="th-kh">ឯកតា</div><div class="th-en">Unit</div></th>
         <th class="col-qty" style="text-align:center"><div class="th-kh">ចំនួន</div><div class="th-en">Quantity</div></th>
-        <th class="col-price" style="text-align:center"><div class="th-kh">តម្លៃឯក</div><div class="th-en">Unit Price</div></th>
+        <th class="col-price" style="text-align:center"><div class="th-kh">តម្លៃរាយ</div><div class="th-en">Unit Price</div></th>
         <th class="col-amount" style="text-align:center"><div class="th-kh">តម្លៃសរុប</div><div class="th-en">Amount</div></th>
         <th class="col-khr" style="text-align:center"><div class="th-kh">រៀល</div></th>
       </tr>
@@ -252,7 +252,7 @@ export function KhmerInvoice(props: KhmerInvoiceProps) {
                   { kh: "ឈ្មោះផលិតផល", en: "Name Of Products", cls: "w-[30%] text-center" },
                   { kh: "ឯកតា", en: "Unit", cls: "w-[8%] text-center" },
                   { kh: "ចំនួន", en: "Quantity", cls: "w-[9%] text-center" },
-                  { kh: "តម្លៃឯក", en: "Unit Price", cls: "w-[13%] text-center" },
+                  { kh: "តម្លៃរាយ", en: "Unit Price", cls: "w-[13%] text-center" },
                   { kh: "តម្លៃសរុប", en: "Amount", cls: "w-[13%] text-center" },
                   { kh: "រៀល", en: "", cls: "w-[13%] text-center" },
                 ].map((col, i) => (
