@@ -114,7 +114,7 @@ function buildPrintHTML(props: Omit<KhmerInvoiceProps, "onClose">, rate: number)
     <thead>
       <tr>
         <th class="col-no" style="text-align:center"><div class="th-kh">ល.រ</div><div class="th-en">No</div></th>
-        <th class="col-name" style="text-align:center"><div class="th-kh">ការយមុខទំនិញ</div><div class="th-en">Name Of Goods</div></th>
+        <th class="col-name" style="text-align:center"><div class="th-kh">ឈ្មោះផលិតផល</div><div class="th-en">Name Of Products</div></th>
         <th class="col-unit" style="text-align:center"><div class="th-kh">ឯកតា</div><div class="th-en">Unit</div></th>
         <th class="col-qty" style="text-align:center"><div class="th-kh">ចំនួន</div><div class="th-en">Quantity</div></th>
         <th class="col-price" style="text-align:center"><div class="th-kh">តម្លៃឯក</div><div class="th-en">Unit Price</div></th>
@@ -249,7 +249,7 @@ export function KhmerInvoice(props: KhmerInvoiceProps) {
               <tr>
                 {[
                   { kh: "ល.រ", en: "No", cls: "w-[5%] text-center" },
-                  { kh: "ការយមុខទំនិញ", en: "Name Of Goods", cls: "w-[30%] text-center" },
+                  { kh: "ឈ្មោះផលិតផល", en: "Name Of Products", cls: "w-[30%] text-center" },
                   { kh: "ឯកតា", en: "Unit", cls: "w-[8%] text-center" },
                   { kh: "ចំនួន", en: "Quantity", cls: "w-[9%] text-center" },
                   { kh: "តម្លៃឯក", en: "Unit Price", cls: "w-[13%] text-center" },
