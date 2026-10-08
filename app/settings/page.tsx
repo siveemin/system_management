@@ -6,7 +6,7 @@ import {
   DollarSign, Languages, Shield, ChevronRight, Warehouse,
   Package, LogOut, Moon, Sun, Globe, Building2,
 } from "lucide-react";
-import { getSystemName, setSystemName } from "@/lib/systemName";
+import { getSystemName, setSystemName, getSystemSubtitle, setSystemSubtitle } from "@/lib/systemName";
 import { CurrencyCode } from "@/lib/utils";
 import { Language } from "@/lib/i18n";
 import { useTranslation } from "@/lib/useTranslation";
@@ -159,11 +159,13 @@ export default function SettingsPage() {
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [activeSection, setActiveSection] = useState("general");
   const [systemName, setSystemNameState] = useState("");
+  const [systemSub, setSystemSubState] = useState("");
 
   useEffect(() => {
     setCurrentUser(dataStore.getCurrentUser());
     setWarehouses(dataStore.getWarehouses());
     setSystemNameState(getSystemName());
+    setSystemSubState(getSystemSubtitle());
   }, []);
 
   const handleCurrencyChange = (cur: CurrencyCode) => {
@@ -179,6 +181,7 @@ export default function SettingsPage() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setSystemName(systemName);
+    setSystemSubtitle(systemSub);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
   };
@@ -257,11 +260,20 @@ export default function SettingsPage() {
         {activeSection === "general" && (
           <>
             <SectionCard icon={Building2} title="System Name" description="The name shown in the topbar and on invoices">
-              <SettingRow label="Business / System Name" description="Appears on the invoice header and navigation bar">
+              <SettingRow label="Business / System Name" description="Main name shown bold in the top left">
                 <input
                   value={systemName}
                   onChange={(e) => setSystemNameState(e.target.value)}
                   placeholder="e.g. Smart Inventory"
+                  maxLength={40}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-[#18181B] focus:outline-none focus:border-[#6b8a4e] w-52 transition-colors"
+                />
+              </SettingRow>
+              <SettingRow label="Subtitle" description="Smaller green text shown below the name">
+                <input
+                  value={systemSub}
+                  onChange={(e) => setSystemSubState(e.target.value)}
+                  placeholder="e.g. Warehouse Management"
                   maxLength={40}
                   className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-[#18181B] focus:outline-none focus:border-[#6b8a4e] w-52 transition-colors"
                 />

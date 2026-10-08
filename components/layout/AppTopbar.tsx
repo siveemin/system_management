@@ -8,18 +8,20 @@ import { GlobalSearchModal } from "./GlobalSearchModal";
 import { NotificationDropdown } from "./NotificationDropdown";
 import dataStore from "@/lib/store";
 import { useTranslation } from "@/lib/useTranslation";
-import { getSystemName } from "@/lib/systemName";
+import { getSystemName, getSystemSubtitle } from "@/lib/systemName";
 
 export function AppTopbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [sysName, setSysName] = useState("Smart Inventory");
+  const [sysSub, setSysSub] = useState("Warehouse Management");
   const { lang } = useTranslation();
 
   useEffect(() => {
     setSysName(getSystemName());
-    const handler = () => setSysName(getSystemName());
+    setSysSub(getSystemSubtitle());
+    const handler = () => { setSysName(getSystemName()); setSysSub(getSystemSubtitle()); };
     window.addEventListener("system_name_changed", handler);
     return () => window.removeEventListener("system_name_changed", handler);
   }, []);
@@ -76,8 +78,8 @@ export function AppTopbar() {
               {sysName.charAt(0).toUpperCase()}
             </div>
             <div className="flex flex-col leading-none">
-              <span className="text-sm font-bold text-[#1e2e14]">{sysName.split(" ")[0]}</span>
-              <span className="text-[11px] text-[#6b8a4e] font-medium">{sysName.split(" ").slice(1).join(" ") || "System"}</span>
+              <span className="text-sm font-bold text-[#1e2e14]">{sysName}</span>
+              <span className="text-[11px] text-[#6b8a4e] font-medium">{sysSub}</span>
             </div>
           </Link>
         </div>
