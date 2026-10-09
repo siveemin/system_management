@@ -227,6 +227,48 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* ── System Name Card (always visible) ── */}
+      <div className="bg-white rounded-[22px] border-2 border-[#6b8a4e]/30 shadow-sm overflow-hidden">
+        <div className="px-5 pt-4 pb-3 border-b border-slate-100 flex items-center gap-3 bg-[#6b8a4e]/5">
+          <div className="h-8 w-8 rounded-xl bg-[#6b8a4e] flex items-center justify-center shrink-0">
+            <Building2 className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-[#18181B]">Change System Name</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">Updates the name in topbar and invoice</p>
+          </div>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-slate-600 block mb-1.5">Main Name <span className="text-slate-400 font-normal">(bold top line)</span></label>
+            <input
+              value={systemName}
+              onChange={(e) => setSystemNameState(e.target.value)}
+              placeholder="e.g. Smart Inventory"
+              maxLength={40}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-[#18181B] focus:outline-none focus:border-[#6b8a4e] transition-colors"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-600 block mb-1.5">Subtitle <span className="text-slate-400 font-normal">(green text below)</span></label>
+            <input
+              value={systemSub}
+              onChange={(e) => setSystemSubState(e.target.value)}
+              placeholder="e.g. Warehouse Management"
+              maxLength={40}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-[#18181B] focus:outline-none focus:border-[#6b8a4e] transition-colors"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => { setSystemName(systemName); setSystemSubtitle(systemSub); setSavedSuccess(true); setTimeout(() => setSavedSuccess(false), 3000); }}
+            className="w-full py-2.5 rounded-xl bg-[#6b8a4e] hover:bg-[#5a7840] text-white text-xs font-bold transition-all"
+          >
+            Save Name
+          </button>
+        </div>
+      </div>
+
       {/* ── Success Toast ── */}
       {savedSuccess && (
         <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700 flex items-center gap-2 shadow-sm">
