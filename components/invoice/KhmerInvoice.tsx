@@ -169,8 +169,16 @@ function buildPrintHTML(props: Omit<KhmerInvoiceProps, "onClose">, rate: number,
 
 export function KhmerInvoice(props: KhmerInvoiceProps) {
   const { orderNumber, orderDate, customerName, warehouseName, items, subtotal, discount = 0, tax = 0, total, notes, onClose } = props;
-  const [rate, setRate] = useState(DEFAULT_RATE);
+  const [rate, setRate] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_RATE;
+    return Number(localStorage.getItem("invoice_exchange_rate")) || DEFAULT_RATE;
+  });
   const [sysName, setSysName] = useState("Smart Inventory");
+
+  const handleRateChange = (val: number) => {
+    setRate(val);
+    localStorage.setItem("invoice_exchange_rate", String(val));
+  };
 
   useEffect(() => {
     setSysName(getSystemName());
@@ -211,7 +219,7 @@ export function KhmerInvoice(props: KhmerInvoiceProps) {
                 min="1"
                 step="100"
                 value={rate}
-                onChange={(e) => setRate(Number(e.target.value) || DEFAULT_RATE)}
+                onChange={(e) => handleRateChange(Number(e.target.value) || DEFAULT_RATE)}
                 className="w-20 text-xs font-bold text-amber-800 bg-transparent outline-none text-right"
               />
               <span className="text-[10px] font-semibold text-amber-700">៛</span>
