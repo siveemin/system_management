@@ -93,7 +93,7 @@ export default function ScannerPage() {
     }
   }, []);
 
-  const handleLookup = (code: string, format?: string) => {
+  const handleLookup = async (code: string, format?: string) => {
     if (!code) return;
     const rawDisplay = code.replace(/[\x00-\x1f\x7f]/g, "").trim();
     if (!rawDisplay) return;
@@ -103,12 +103,26 @@ export default function ScannerPage() {
 
     const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
     const normCode = norm(rawDisplay);
-    const prod = products.find(p =>
+    const fmtLabel = format && format !== "unknown" ? ` · ${format.replace(/_/g, " ").toUpperCase()}` : "";
+
+    // 1. Fast local lookup
+    let prod: any = products.find(p =>
       norm(p.barcode) === normCode ||
       norm(p.sku) === normCode ||
       norm(p.qrCode) === normCode
     );
-    const fmtLabel = format && format !== "unknown" ? ` · ${format.replace(/_/g, " ").toUpperCase()}` : "";
+
+    // 2. Server fallback — catches stale local state or any matching difference
+    if (!prod) {
+      setActionMessage({ text: "Searching…", type: "success" });
+      try {
+        const res = await fetch(`/api/products/lookup?q=${encodeURIComponent(rawDisplay)}`);
+        if (res.ok) {
+          prod = await res.json();
+          load(); // refresh local list in background
+        }
+      } catch {}
+    }
 
     if (prod) {
       if (pageMode === "pos") {
@@ -130,16 +144,13 @@ export default function ScannerPage() {
       setSearchFeedback(null);
       setQuickCreate(null);
       setActionMessage({ text: `✓ ${prod.name} · ${rawDisplay}${fmtLabel}`, type: "success" });
-      // Scroll to product detail card on mobile (desktop: already visible)
       setTimeout(() => resultAreaRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80);
     } else {
-      console.log("[scanner] no match for:", JSON.stringify(rawDisplay), "| products loaded:", products.length, "| barcodes:", products.map(p => p.barcode).slice(0, 10));
       setScannedProduct(null);
       setScanTime(null);
       setScannedFormat(format ?? null);
       setSearchFeedback(rawDisplay);
       setQuickCreate({ barcode: rawDisplay, name: "" });
-      // Immediately open the full product registration modal
       openAddModal(rawDisplay);
       setActionMessage({ text: `New barcode "${rawDisplay}"${fmtLabel} — fill in product details`, type: "error" });
     }
