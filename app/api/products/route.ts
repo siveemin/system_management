@@ -134,16 +134,15 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     if (error?.code === "P2002") {
-      // Only return existing product when the duplicate is on barcode (not SKU collision)
-      const dupFields: string[] = error?.meta?.target ?? [];
-      if (dupFields.includes("barcode") && body.barcode) {
+      // SQLite doesn't populate meta.target reliably, so try barcode lookup first
+      if (body.barcode) {
         try {
           const found = await findProductFull({ barcode: body.barcode });
           if (found) return NextResponse.json(found, { status: 200 });
         } catch {}
       }
-      // SKU collision or barcode lookup failed — tell the frontend to retry with a new SKU
-      return NextResponse.json({ error: "duplicate_sku", field: dupFields[0] ?? "sku" }, { status: 409 });
+      // Barcode not the issue (or not provided) — must be a SKU collision, tell client to retry
+      return NextResponse.json({ error: "duplicate_sku", field: "sku" }, { status: 409 });
     }
     console.error("POST /api/products error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
