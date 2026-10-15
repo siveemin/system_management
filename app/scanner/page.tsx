@@ -34,6 +34,7 @@ export default function ScannerPage() {
   const [searchFeedback, setSearchFeedback] = useState<string | null>(null);
   const [scanMode, setScanMode] = useState<"camera" | "hardware">("camera");
   const lastScanRef = useRef<{ code: string; time: number } | null>(null);
+  const resultAreaRef = useRef<HTMLDivElement>(null);
 
   const [pageMode, setPageMode] = useState<"lookup" | "pos">("lookup");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -100,7 +101,13 @@ export default function ScannerPage() {
     if (lastScanRef.current?.code === rawDisplay && now - lastScanRef.current.time < 2000) return;
     lastScanRef.current = { code: rawDisplay, time: now };
 
-    const prod = products.find(p => p.barcode === rawDisplay || p.sku === rawDisplay);
+    const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+    const normCode = norm(rawDisplay);
+    const prod = products.find(p =>
+      norm(p.barcode) === normCode ||
+      norm(p.sku) === normCode ||
+      norm(p.qrCode) === normCode
+    );
     const fmtLabel = format && format !== "unknown" ? ` · ${format.replace(/_/g, " ").toUpperCase()}` : "";
 
     if (prod) {
@@ -123,7 +130,10 @@ export default function ScannerPage() {
       setSearchFeedback(null);
       setQuickCreate(null);
       setActionMessage({ text: `✓ ${prod.name} · ${rawDisplay}${fmtLabel}`, type: "success" });
+      // Scroll to product detail card on mobile (desktop: already visible)
+      setTimeout(() => resultAreaRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80);
     } else {
+      console.log("[scanner] no match for:", JSON.stringify(rawDisplay), "| products loaded:", products.length, "| barcodes:", products.map(p => p.barcode).slice(0, 10));
       setScannedProduct(null);
       setScanTime(null);
       setScannedFormat(format ?? null);
@@ -147,6 +157,7 @@ export default function ScannerPage() {
         name: quickCreate.name.trim(),
         sku: generateSKU("SKU", cat?.name ?? ""),
         barcode: quickCreate.barcode,
+        qrCode: quickCreate.barcode,
         uom: "PCS",
         costPrice: 0,
         sellingPrice: 0,
@@ -193,6 +204,7 @@ export default function ScannerPage() {
         name: addForm.name.trim(),
         sku: addForm.sku || generateSKU("SKU", cat?.name ?? ""),
         barcode: addForm.barcode || generateBarcode(),
+        qrCode: addForm.barcode || null,
         uom: addForm.uom,
         costPrice: addForm.costPrice,
         sellingPrice: addForm.sellingPrice,
@@ -210,7 +222,10 @@ export default function ScannerPage() {
       setQuickCreate(null);
       setScannedProduct(newProduct);
       setScanTime(new Date());
-      setActionMessage({ text: `Product "${newProduct.name}" added & matched`, type: "success" });
+      setActionMessage({ text: `✓ ${newProduct.name}`, type: "success" });
+      setTimeout(() => resultAreaRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80);
+    } else if (res.status === 409) {
+      setActionMessage({ text: "A product with this barcode already exists — check the product list.", type: "error" });
     }
   };
 
@@ -482,7 +497,7 @@ export default function ScannerPage() {
           </Card>
         </div>
 
-        <div className="lg:col-span-7 space-y-4">
+        <div ref={resultAreaRef} className="lg:col-span-7 space-y-4">
           {pageMode === "pos" && (
             <Card className="border-slate-200/80 rounded-[26px] overflow-hidden">
               <div className="bg-[#1e2e14] text-white px-6 py-4 flex items-center justify-between">

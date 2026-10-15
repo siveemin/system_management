@@ -30,6 +30,7 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
   const detRef      = useRef<any>(null);
   const controlsRef = useRef<any>(null); // ZXing controls
   const fileRef     = useRef<HTMLInputElement>(null);
+  const consoleRestoreRef = useRef<(() => void) | null>(null);
 
   const stopAll = useCallback(() => {
     activeRef.current = false;
@@ -41,6 +42,8 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
       try { controlsRef.current.stop(); } catch {}
       controlsRef.current = null;
     }
+    consoleRestoreRef.current?.();
+    consoleRestoreRef.current = null;
     setState("booting");
   }, []);
 
@@ -49,6 +52,7 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
     cancelAnimationFrame(rafRef.current);
     streamRef.current?.getTracks().forEach(t => t.stop());
     if (controlsRef.current) { try { controlsRef.current.stop(); } catch {} }
+    consoleRestoreRef.current?.();
   }, []);
 
   // BarcodeDetector RAF loop — Chrome / Android
@@ -104,6 +108,14 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
       try {
         const { BrowserMultiFormatReader } = await import("@zxing/browser");
         const reader = new BrowserMultiFormatReader();
+
+        // ZXing logs NotFoundException/ChecksumException on every frame with no barcode — silence it
+        const _origLog = console.log;
+        const _origWarn = console.warn;
+        const zxingNoise = /NotFoundException|ChecksumException|FormatException|MultiFormatReader|not possible to play the video|already playing/;
+        console.log = (...a: any[]) => { if (!zxingNoise.test(String(a[0] ?? ''))) _origLog.apply(console, a); };
+        console.warn = (...a: any[]) => { if (!zxingNoise.test(String(a[0] ?? ''))) _origWarn.apply(console, a); };
+        consoleRestoreRef.current = () => { console.log = _origLog; console.warn = _origWarn; };
 
         const controls = await reader.decodeFromConstraints(
           { video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } },

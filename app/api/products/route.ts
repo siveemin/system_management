@@ -64,11 +64,45 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    if (!prisma) return NextResponse.json({ error: "Database not available" }, { status: 503 });
+async function findProductFull(where: any) {
+  const existing = await prisma!.product.findFirst({
+    where,
+    include: { category: true, supplier: true, inventories: { include: { warehouse: true } } },
+  });
+  if (!existing) return null;
+  const totalStock = existing.inventories.reduce((s: number, i: any) => s + i.quantity, 0);
+  const totalReserved = existing.inventories.reduce((s: number, i: any) => s + i.reservedQuantity, 0);
+  return {
+    id: existing.id, name: existing.name, sku: existing.sku,
+    barcode: existing.barcode, qrCode: existing.qrCode,
+    description: existing.description, uom: existing.uom,
+    costPrice: Number(existing.costPrice), sellingPrice: Number(existing.sellingPrice),
+    discountPercent: existing.discountPercent,
+    minStockLevel: existing.minStockLevel, maxStockLevel: existing.maxStockLevel,
+    imageUrl: existing.imageUrl, status: existing.status,
+    categoryId: existing.categoryId, categoryName: (existing as any).category?.name ?? null,
+    supplierId: existing.supplierId, supplierName: (existing as any).supplier?.name ?? null,
+    totalStock, totalReserved, totalAvailable: totalStock - totalReserved,
+    inventories: existing.inventories.map((inv: any) => ({
+      id: inv.id, productId: inv.productId, warehouseId: inv.warehouseId,
+      warehouseName: inv.warehouse.name, warehouseCode: inv.warehouse.code,
+      quantity: inv.quantity, reservedQuantity: inv.reservedQuantity,
+      availableQuantity: inv.quantity - inv.reservedQuantity,
+      locationBin: inv.locationBin, updatedAt: inv.updatedAt.toISOString(),
+    })),
+    createdAt: existing.createdAt.toISOString(),
+  };
+}
 
-    const body = await request.json();
+export async function POST(request: NextRequest) {
+  if (!prisma) return NextResponse.json({ error: "Database not available" }, { status: 503 });
+
+  let body: any = {};
+  try { body = await request.json(); } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  try {
     const product = await prisma.product.create({
       data: {
         name: body.name,
@@ -93,13 +127,25 @@ export async function POST(request: NextRequest) {
       ...product,
       costPrice: Number(product.costPrice),
       sellingPrice: Number(product.sellingPrice),
-      totalStock: 0,
-      totalReserved: 0,
-      totalAvailable: 0,
+      totalStock: 0, totalReserved: 0, totalAvailable: 0,
       inventories: [],
       createdAt: product.createdAt.toISOString(),
     }, { status: 201 });
-  } catch (error) {
+
+  } catch (error: any) {
+    if (error?.code === "P2002") {
+      // Duplicate barcode or SKU — find and return the existing product so the UI can show it
+      try {
+        const orClauses: any[] = [];
+        if (body.barcode) orClauses.push({ barcode: body.barcode });
+        if (body.sku) orClauses.push({ sku: body.sku });
+        const found = orClauses.length
+          ? await findProductFull({ OR: orClauses })
+          : null;
+        if (found) return NextResponse.json(found, { status: 200 });
+      } catch {}
+      return NextResponse.json({ error: "A product with this barcode or SKU already exists." }, { status: 409 });
+    }
     console.error("POST /api/products error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
