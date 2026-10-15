@@ -85,19 +85,19 @@ export function DrawerMenu() {
       />
 
       {/* Drawer panel */}
-      <aside className="fixed top-0 left-0 z-50 h-full w-[280px] bg-[#0E1A08] shadow-2xl flex flex-col overflow-y-auto animate-in slide-in-from-left duration-200">
+      <aside className="fixed top-0 left-0 z-50 h-full w-[280px] bg-white shadow-2xl flex flex-col overflow-y-auto animate-in slide-in-from-left duration-200">
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-5 shrink-0">
+        <div className="flex items-center gap-3 px-5 py-5 shrink-0 border-b border-[#F0EAE0] bg-[#F7F3EE]">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#4D7A32] text-white font-black text-lg shadow-sm shrink-0">
             {sysName.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-bold text-white truncate">{sysName}</div>
-            <div className="text-[11px] text-[#8BA882] truncate">{sysSub}</div>
+            <div className="text-sm font-bold text-[#1A150E] truncate">{sysName}</div>
+            <div className="text-[11px] text-[#9A9288] truncate">{sysSub}</div>
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {/* Collapsible sections */}
           {SECTIONS.map((section) => {
             const isExpanded = expanded === section.label;
@@ -108,10 +108,8 @@ export function DrawerMenu() {
               <div key={section.label}>
                 <button
                   onClick={() => setExpanded(isExpanded ? "" : section.label)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors ${
-                    hasActive
-                      ? "text-[#8BA882]"
-                      : "text-[#4D6040] hover:text-[#8BA882]"
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-colors ${
+                    hasActive ? "text-[#4D7A32]" : "text-[#B0A89E] hover:text-[#6B6560]"
                   }`}
                 >
                   <span>{section.label}</span>
@@ -125,23 +123,21 @@ export function DrawerMenu() {
                 {isExpanded && (
                   <div className="mt-1 space-y-0.5 pl-1">
                     {section.items.map((item) => {
-                      const isActive =
-                        item.href === "/"
-                          ? pathname === "/"
-                          : pathname.startsWith(item.href);
+                      const active =
+                        item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
                       const Icon = item.icon;
                       return (
                         <Link
                           key={item.href}
                           href={item.href}
                           onClick={close}
-                          className={`ripple flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] ${
-                            isActive
-                              ? "bg-[#4D7A32] text-white"
-                              : "text-[#8BA882] hover:bg-white/[0.08] hover:text-[#C8D8BC]"
+                          className={`ripple flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] ${
+                            active
+                              ? "bg-[#EBF5E4] text-[#2E6619]"
+                              : "text-[#6B6560] hover:bg-[#F7F3EE] hover:text-[#1A150E]"
                           }`}
                         >
-                          <Icon className="h-4 w-4 shrink-0" />
+                          <Icon className={`h-4 w-4 shrink-0 ${active ? "text-[#4D7A32]" : ""}`} />
                           {item.label}
                         </Link>
                       );
@@ -153,11 +149,11 @@ export function DrawerMenu() {
           })}
 
           {/* Divider */}
-          <div className="border-t border-white/10 my-2" />
+          <div className="border-t border-[#F0EAE0] my-2" />
 
           {/* Bottom items */}
           {BOTTOM_ITEMS.map((item) => {
-            const isActive =
+            const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
@@ -165,13 +161,13 @@ export function DrawerMenu() {
                 key={item.href}
                 href={item.href}
                 onClick={close}
-                className={`ripple flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] ${
-                  isActive
-                    ? "bg-[#4D7A32] text-white"
-                    : "text-[#8BA882] hover:bg-white/[0.08] hover:text-[#C8D8BC]"
+                className={`ripple flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] ${
+                  active
+                    ? "bg-[#EBF5E4] text-[#2E6619]"
+                    : "text-[#6B6560] hover:bg-[#F7F3EE] hover:text-[#1A150E]"
                 }`}
               >
-                <Icon className="h-4 w-4 shrink-0" />
+                <Icon className={`h-4 w-4 shrink-0 ${active ? "text-[#4D7A32]" : ""}`} />
                 {item.label}
               </Link>
             );
@@ -179,18 +175,18 @@ export function DrawerMenu() {
         </nav>
 
         {/* Footer */}
-        <div className="px-3 py-4 border-t border-white/10 space-y-1 shrink-0">
+        <div className="px-3 py-4 border-t border-[#F0EAE0] space-y-1 shrink-0">
           <button
             onClick={async () => {
               await fetch("/api/auth/logout", { method: "POST" });
               window.location.href = "/login";
             }}
-            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all active:scale-[0.97]"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-[#6B6560] hover:bg-red-50 hover:text-red-600 transition-all active:scale-[0.97]"
           >
             <LogOut className="h-4 w-4 shrink-0" />
             Logout
           </button>
-          <p className="text-[10px] text-[#4D6040] text-center pt-1">
+          <p className="text-[10px] text-[#B0A89E] text-center pt-1">
             {sysName} © {new Date().getFullYear()}
           </p>
         </div>
