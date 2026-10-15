@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutGrid, ShoppingBag, Boxes, Users, BarChart3, FileText,
   Truck, ScanBarcode, Settings, Shield, TrendingUp, AlertTriangle,
-  ShoppingCart, ChevronDown, ChevronRight, Heart, Tag,
+  ShoppingCart, ChevronDown, ChevronRight, Heart, Tag, LogOut,
 } from "lucide-react";
 import { drawerState } from "@/lib/drawerState";
 import { useSwipeGesture } from "@/lib/useSwipeGesture";
@@ -168,7 +168,17 @@ export function DrawerMenu() {
         </nav>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-slate-100 bg-[#f7fbf7]">
+        <div className="px-5 py-4 border-t border-slate-100 bg-[#f7fbf7] space-y-3">
+          <button
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
+              window.location.href = "/login";
+            }}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 transition-all active:scale-[0.97]"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            Logout
+          </button>
           <p className="text-[10px] text-slate-400 text-center">
             Smart Inventory © 2025
           </p>

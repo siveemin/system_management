@@ -10,6 +10,7 @@ import {
   Warehouse,
   Shield,
   SlidersHorizontal,
+  LogOut,
 } from "lucide-react";
 import dataStore from "@/lib/store";
 import { GlobalSearchModal } from "./GlobalSearchModal";
@@ -122,6 +123,18 @@ export function Topbar() {
               className="h-9 w-9 rounded-full object-cover ring-2 ring-white shadow-sm"
             />
           </div>
+
+          {/* Logout Button */}
+          <button
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
+              window.location.href = "/login";
+            }}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white border border-slate-200/80 text-slate-500 shadow-pill hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors cursor-pointer"
+            title="Logout"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </header>
 

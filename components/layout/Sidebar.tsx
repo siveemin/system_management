@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutGrid, ShoppingBag, Users, BarChart3, FileText,
   Truck, ScanBarcode, Settings, Shield, Boxes,
-  TrendingUp, AlertTriangle, Tag,
+  TrendingUp, AlertTriangle, Tag, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dataStore from "@/lib/store";
@@ -81,6 +81,26 @@ export function Sidebar() {
       </div>
       <div className="flex flex-col items-center gap-3 w-full pt-4 border-t border-slate-200/60 dark:border-slate-800/60">
         {bottomNav.map((item) => <NavItem key={item.key} item={item} isBottom />)}
+        <div className="relative flex items-center justify-center">
+          <button
+            onMouseEnter={() => setHoveredItem("logout")}
+            onMouseLeave={() => setHoveredItem(null)}
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
+              window.location.href = "/login";
+            }}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
+            title="Logout"
+          >
+            <LogOut className="h-5 w-5 stroke-2" />
+          </button>
+          {hoveredItem === "logout" && (
+            <div className="absolute left-14 z-50 whitespace-nowrap rounded-xl bg-[#18181B] px-3 py-1.5 text-xs font-semibold text-white shadow-xl animate-in fade-in zoom-in-95 duration-150">
+              Logout
+              <div className="absolute -left-1 top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#18181B]" />
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );

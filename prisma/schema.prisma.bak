@@ -1,0 +1,556 @@
+// ============================================================
+//  SMART INVENTORY — DATABASE SCHEMA
+//  Database: SQLite (dev)
+//  ORM:      Prisma
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+//  ENUMS  (fixed list of allowed values)
+// ============================================================
+
+// Who the user is — controls what they can see/do
+enum Role {
+  ADMIN             // Full access to everything
+  WAREHOUSE_MANAGER // Manages stock, transfers, receives orders
+  SALES_MANAGER     // Creates and manages sales orders
+  STAFF             // Basic read + scanner access
+}
+
+// Simple on/off status used by Users, Products, Suppliers, Customers, Warehouses
+enum EntityStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// Every time stock moves, one of these reasons is recorded
+enum TransactionType {
+  STOCK_IN            // Manual stock addition
+  STOCK_OUT           // Manual stock removal
+  PURCHASE_RECEIVE    // Stock arrived from a supplier
+  SALE                // Stock sold to a customer
+  TRANSFER_OUT        // Stock left this warehouse
+  TRANSFER_IN         // Stock arrived at this warehouse
+  ADJUSTMENT_INCREASE // Correction — found extra stock
+  ADJUSTMENT_DECREASE // Correction — stock was missing
+  RETURN              // Customer returned an item
+}
+
+// What document caused a stock movement
+enum ReferenceType {
+  PURCHASE_ORDER
+  SALES_ORDER
+  STOCK_TRANSFER
+  MANUAL_ADJUSTMENT
+  INITIAL_COUNT // First-time stock entry when a product is created
+  RETURN
+}
+
+// Lifecycle of a Purchase Order (buying from a supplier)
+enum PurchaseOrderStatus {
+  DRAFT             // Being prepared
+  SUBMITTED         // Sent to supplier
+  APPROVED          // Approved internally
+  PARTIALLY_RECEIVED // Some items arrived
+  RECEIVED          // All items arrived
+  CANCELLED
+}
+
+// Lifecycle of a Sales Order (selling to a customer)
+enum SalesOrderStatus {
+  DRAFT      // Being prepared
+  CONFIRMED  // Customer confirmed
+  PROCESSING // Being packed/shipped
+  COMPLETED  // Delivered
+  CANCELLED
+}
+
+// Lifecycle of a Stock Transfer (moving stock between warehouses)
+enum StockTransferStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  IN_TRANSIT  // Goods are on the way
+  RECEIVED    // Destination warehouse confirmed receipt
+  CANCELLED
+}
+
+// Status of a low-stock warning
+enum AlertStatus {
+  NEW      // Just triggered, not seen yet
+  VIEWED   // Someone looked at it
+  RESOLVED // Stock was replenished
+}
+
+// What kind of in-app notification it is
+enum NotificationType {
+  LOW_STOCK
+  OUT_OF_STOCK
+  PURCHASE_ORDER
+  SALES_ORDER
+  STOCK_TRANSFER
+  SYSTEM // General system message
+}
+
+// ============================================================
+//  PEOPLE & PLACES
+// ============================================================
+
+// App users (staff who log in)
+model User {
+  id           String       @id @default(uuid())
+  name         String
+  email        String       @unique
+  passwordHash String       // Hashed password — never store plain text
+  role         Role         @default(STAFF)
+  avatar       String?      // URL to profile picture
+  phone        String?
+  status       EntityStatus @default(ACTIVE)
+
+  // Which warehouse this user is assigned to (optional)
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+
+  // Records created by this user
+  inventoryTransactions InventoryTransaction[]
+  purchaseOrdersCreated PurchaseOrder[]        @relation("CreatedPurchaseOrders")
+  salesOrdersCreated    SalesOrder[]           @relation("CreatedSalesOrders")
+  transfersRequested    StockTransfer[]        @relation("TransfersRequested")
+  transfersSent         StockTransfer[]        @relation("TransfersSent")
+  transfersReceived     StockTransfer[]        @relation("TransfersReceived")
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([role])
+}
+
+// A physical storage location (e.g. "Main Warehouse", "Branch Store")
+model Warehouse {
+  id          String       @id @default(uuid())
+  name        String
+  code        String       @unique // Short code, e.g. "WH-01"
+  address     String?
+  city        String?
+  country     String?
+  phone       String?
+  email       String?
+  managerName String?
+  status      EntityStatus @default(ACTIVE)
+
+  // Everything linked to this warehouse
+  users                 User[]
+  productInventories    ProductInventory[]
+  inventoryTransactions InventoryTransaction[]
+  purchaseOrders        PurchaseOrder[]
+  salesOrders           SalesOrder[]
+  transfersOut          StockTransfer[] @relation("SourceWarehouse")
+  transfersIn           StockTransfer[] @relation("DestinationWarehouse")
+  lowStockAlerts        LowStockAlert[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([status])
+}
+
+// A company or person you buy products from
+model Supplier {
+  id            String       @id @default(uuid())
+  name          String
+  contactPerson String?      // Main point of contact
+  email         String?
+  phone         String?
+  address       String?
+  city          String?
+  country       String?
+  status        EntityStatus @default(ACTIVE)
+  notes         String?
+
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+}
+
+// A company or person you sell products to
+model Customer {
+  id            String       @id @default(uuid())
+  name          String
+  contactPerson String?
+  email         String?
+  phone         String?
+  address       String?
+  city          String?
+  country       String?
+  status        EntityStatus @default(ACTIVE)
+  notes         String?
+
+  salesOrders SalesOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+}
+
+// ============================================================
+//  PRODUCTS & STOCK
+// ============================================================
+
+// A group of similar products (e.g. "Electronics", "Clothing")
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique // URL-friendly name, e.g. "electronics"
+  description String?
+  products    Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// A product that can be bought, sold, and stored
+model Product {
+  id              String       @id @default(uuid())
+  name            String
+  sku             String       @unique // Stock Keeping Unit — unique product code
+  barcode         String?      @unique // Barcode number (for scanner)
+  qrCode          String?      // QR code data
+  description     String?
+  uom             String       @default("pcs") // Unit of Measure: pcs, kg, litre, box...
+  costPrice       Decimal      @default(0.0) // How much you paid
+  sellingPrice    Decimal      @default(0.0) // How much you charge
+  discountPercent Float?       // Optional discount percentage
+  minStockLevel   Int          @default(10)  // Alert triggered when stock falls below this
+  maxStockLevel   Int?         // Upper limit (optional)
+  imageUrl        String?
+  status          EntityStatus @default(ACTIVE)
+
+  // Category & Supplier (both optional)
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  supplierId String?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  // All records related to this product
+  inventories           ProductInventory[]
+  inventoryTransactions InventoryTransaction[]
+  purchaseOrderItems    PurchaseOrderItem[]
+  salesOrderItems       SalesOrderItem[]
+  stockTransferItems    StockTransferItem[]
+  lowStockAlerts        LowStockAlert[]
+  forecasts             Forecast[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sku])
+  @@index([barcode])
+  @@index([categoryId])
+  @@index([status])
+}
+
+// How many units of a product are in each warehouse
+// One row = one product in one warehouse
+model ProductInventory {
+  id               String    @id @default(uuid())
+  productId        String
+  product          Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouseId      String
+  warehouse        Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  quantity         Int       @default(0) // Total units on hand
+  reservedQuantity Int       @default(0) // Units locked for confirmed sales orders
+  locationBin      String?   // Physical shelf location, e.g. "Aisle-2-Shelf-4"
+
+  // Available stock = quantity - reservedQuantity
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, warehouseId]) // Only one row per product per warehouse
+  @@index([productId])
+  @@index([warehouseId])
+}
+
+// A full history of every stock movement (never deleted — permanent log)
+model InventoryTransaction {
+  id                String          @id @default(uuid())
+  transactionNumber String          @unique // e.g. "TXN-20240901-0001"
+  productId         String
+  product           Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouseId       String
+  warehouse         Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  quantityBefore    Int             // Stock level before this transaction
+  quantityChange    Int             // + means added, - means removed
+  quantityAfter     Int             // Stock level after this transaction
+  type              TransactionType // Why did the stock change?
+  referenceId       String?         // ID of the order/transfer that caused this
+  referenceType     ReferenceType   // What type of document caused this
+  userId            String?
+  user              User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  notes             String?
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([warehouseId])
+  @@index([transactionNumber])
+  @@index([type])
+  @@index([createdAt])
+  @@index([referenceId, referenceType])
+}
+
+// ============================================================
+//  ORDERS
+// ============================================================
+
+// An order to buy products FROM a supplier
+model PurchaseOrder {
+  id                   String              @id @default(uuid())
+  orderNumber          String              @unique // e.g. "PO-20240901-0001"
+  supplierId           String
+  supplier             Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  warehouseId          String              // Where the goods will be delivered
+  warehouse            Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  orderDate            DateTime            @default(now())
+  expectedDeliveryDate DateTime?
+  status               PurchaseOrderStatus @default(DRAFT)
+  totalAmount          Decimal             @default(0.0)
+  notes                String?
+  createdById          String?
+  createdBy            User?               @relation("CreatedPurchaseOrders", fields: [createdById], references: [id], onDelete: SetNull)
+
+  items PurchaseOrderItem[] // Products listed in this order
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderNumber])
+  @@index([supplierId])
+  @@index([warehouseId])
+  @@index([status])
+}
+
+// One product line inside a Purchase Order
+model PurchaseOrderItem {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity         Int           // How many were ordered
+  receivedQuantity Int           @default(0) // How many actually arrived
+  unitCost         Decimal       // Price per unit
+  totalCost        Decimal       // quantity x unitCost
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+}
+
+// An order to sell products TO a customer
+model SalesOrder {
+  id           String           @id @default(uuid())
+  orderNumber  String           @unique // e.g. "SO-20240901-0001"
+  customerId   String
+  customer     Customer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  warehouseId  String           // Where stock is taken from
+  warehouse    Warehouse        @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  orderDate    DateTime         @default(now())
+  deliveryDate DateTime?
+  status       SalesOrderStatus @default(DRAFT)
+  subtotal     Decimal          @default(0.0)
+  discount     Decimal          @default(0.0)
+  tax          Decimal          @default(0.0)
+  totalAmount  Decimal          @default(0.0)
+  notes        String?
+  createdById  String?
+  createdBy    User?            @relation("CreatedSalesOrders", fields: [createdById], references: [id], onDelete: SetNull)
+
+  items SalesOrderItem[] // Products listed in this order
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderNumber])
+  @@index([customerId])
+  @@index([warehouseId])
+  @@index([status])
+}
+
+// One product line inside a Sales Order
+model SalesOrderItem {
+  id           String     @id @default(uuid())
+  salesOrderId String
+  salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity     Int
+  unitPrice    Decimal
+  totalAmount  Decimal    // quantity x unitPrice
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([salesOrderId])
+  @@index([productId])
+}
+
+// ============================================================
+//  STOCK TRANSFERS
+// ============================================================
+
+// Moving stock from one warehouse to another
+model StockTransfer {
+  id                     String              @id @default(uuid())
+  transferNumber         String              @unique // e.g. "ST-20240901-0001"
+  sourceWarehouseId      String              // Stock leaves FROM here
+  sourceWarehouse        Warehouse           @relation("SourceWarehouse", fields: [sourceWarehouseId], references: [id], onDelete: Restrict)
+  destinationWarehouseId String              // Stock arrives TO here
+  destinationWarehouse   Warehouse           @relation("DestinationWarehouse", fields: [destinationWarehouseId], references: [id], onDelete: Restrict)
+  status                 StockTransferStatus @default(DRAFT)
+
+  // Three people can be involved in a transfer
+  requestedById String? // Who asked for the transfer
+  requestedBy   User?   @relation("TransfersRequested", fields: [requestedById], references: [id], onDelete: SetNull)
+  sentById      String? // Who packed and sent the goods
+  sentBy        User?   @relation("TransfersSent", fields: [sentById], references: [id], onDelete: SetNull)
+  receivedById  String? // Who confirmed receipt at destination
+  receivedBy    User?   @relation("TransfersReceived", fields: [receivedById], references: [id], onDelete: SetNull)
+
+  sentDate     DateTime? // When goods were dispatched
+  receivedDate DateTime? // When goods were confirmed received
+  notes        String?
+
+  items StockTransferItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([transferNumber])
+  @@index([sourceWarehouseId])
+  @@index([destinationWarehouseId])
+  @@index([status])
+}
+
+// One product line inside a Stock Transfer
+model StockTransferItem {
+  id              String        @id @default(uuid())
+  stockTransferId String
+  stockTransfer   StockTransfer @relation(fields: [stockTransferId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  requestedQuantity Int          // How many were requested
+  sentQuantity      Int          @default(0) // How many were actually sent
+  receivedQuantity  Int          @default(0) // How many arrived at destination
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([stockTransferId])
+  @@index([productId])
+}
+
+// ============================================================
+//  ALERTS & NOTIFICATIONS
+// ============================================================
+
+// Created automatically when a product's stock falls below minStockLevel
+model LowStockAlert {
+  id               String      @id @default(uuid())
+  productId        String
+  product          Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouseId      String
+  warehouse        Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  currentQuantity  Int         // Stock level when alert was triggered
+  minStockLevel    Int         // The threshold that was breached
+  shortageQuantity Int         // How many units short (minStockLevel - currentQuantity)
+  status           AlertStatus @default(NEW)
+  resolvedAt       DateTime?   // When the stock was replenished
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([warehouseId])
+  @@index([status])
+}
+
+// In-app notification shown to a user (bell icon)
+model Notification {
+  id        String           @id @default(uuid())
+  title     String
+  message   String
+  type      NotificationType @default(SYSTEM)
+  link      String?          // Optional URL to navigate to when clicked
+  read      Boolean          @default(false)
+  userId    String?          // Which user sees this (null = broadcast to all)
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+// ============================================================
+//  FORECASTING & AUDIT
+// ============================================================
+
+// AI-calculated demand prediction for a product
+model Forecast {
+  id                     String   @id @default(uuid())
+  productId              String
+  product                Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  calculatedAt           DateTime @default(now())
+  dailyAvgSales          Decimal  // Average units sold per day
+  predictedDemand7d      Int      // Expected units needed in next 7 days
+  predictedDemand30d     Int      // Expected units needed in next 30 days
+  currentStock           Int      // Stock at time of calculation
+  estimatedDaysRemaining Int      // Days until stock runs out at current rate
+  recommendedReorderQty  Int      // How many to order now
+  notes                  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+// Permanent record of every important action taken in the system
+model AuditLog {
+  id           String  @id @default(uuid())
+  userId       String?
+  user         User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName     String? // Stored separately so it survives if user is deleted
+  action       String  // e.g. "CREATE_PRODUCT", "APPROVE_ORDER"
+  resourceType String  // e.g. "PRODUCT", "PURCHASE_ORDER"
+  resourceId   String? // ID of the thing that was changed
+  description  String  // Human-readable summary of what happened
+  metadata     String? // Extra JSON data (optional)
+  ipAddress    String? // IP of the user who did it
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([createdAt])
+}
