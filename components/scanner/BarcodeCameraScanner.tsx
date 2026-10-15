@@ -17,35 +17,30 @@ const ALL_BD_FORMATS = [
   "rss_14","rss_expanded","upc_a","upc_e","upc_ean_extension","unknown",
 ] as const;
 
-// html5-qrcode format enum values
 const H5Q_ALL_FORMATS = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
 
 export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }: Props) {
   const [state, setState] = useState<ScanState>("booting");
-  const [usingH5q, setUsingH5q] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
 
-  const videoRef   = useRef<HTMLVideoElement>(null);
-  const streamRef  = useRef<MediaStream | null>(null);
-  const rafRef     = useRef<number>(0);
-  const activeRef  = useRef(false);
-  const detRef     = useRef<any>(null);
-  const h5qRef     = useRef<any>(null);
-  const fileRef    = useRef<HTMLInputElement>(null);
-  // Stable unique ID — container MUST always be in DOM so h5q can measure it
-  const cid = useRef(`bcs-${Math.random().toString(36).slice(2, 8)}`).current;
+  const videoRef    = useRef<HTMLVideoElement>(null);
+  const streamRef   = useRef<MediaStream | null>(null);
+  const rafRef      = useRef<number>(0);
+  const activeRef   = useRef(false);
+  const detRef      = useRef<any>(null);
+  const controlsRef = useRef<any>(null); // ZXing controls
+  const fileRef     = useRef<HTMLInputElement>(null);
 
   const stopAll = useCallback(() => {
     activeRef.current = false;
     cancelAnimationFrame(rafRef.current);
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-    if (h5qRef.current) {
-      const s = h5qRef.current; h5qRef.current = null;
-      Promise.resolve(s.stop()).catch(() => {}).then(() => { try { s.clear(); } catch {} });
+    if (videoRef.current) { videoRef.current.srcObject = null; }
+    if (controlsRef.current) {
+      try { controlsRef.current.stop(); } catch {}
+      controlsRef.current = null;
     }
-    setUsingH5q(false);
     setState("booting");
   }, []);
 
@@ -53,10 +48,7 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
     activeRef.current = false;
     cancelAnimationFrame(rafRef.current);
     streamRef.current?.getTracks().forEach(t => t.stop());
-    if (h5qRef.current) {
-      const s = h5qRef.current; h5qRef.current = null;
-      Promise.resolve(s.stop()).catch(() => {}).then(() => { try { s.clear(); } catch {} });
-    }
+    if (controlsRef.current) { try { controlsRef.current.stop(); } catch {} }
   }, []);
 
   // BarcodeDetector RAF loop — Chrome / Android
@@ -83,7 +75,10 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
       // ── Chrome / Android: native BarcodeDetector ──────────────────────
       let stream: MediaStream | null = null;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
       } catch (e1: any) {
         if (/notallowed|denied/i.test(String(e1))) { activeRef.current = false; setState("denied"); return; }
         try { stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); }
@@ -96,52 +91,42 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
       v.play().catch(() => {});
       setState("streaming");
       let fmts: string[] = [...ALL_BD_FORMATS];
-      try { const s = await (window as any).BarcodeDetector.getSupportedFormats(); if (s.length) fmts = ALL_BD_FORMATS.filter(f => s.includes(f)); } catch {}
+      try {
+        const sup: string[] = await (window as any).BarcodeDetector.getSupportedFormats();
+        if (sup.length) fmts = ALL_BD_FORMATS.filter(f => sup.includes(f));
+      } catch {}
       detRef.current = new (window as any).BarcodeDetector({ formats: fmts });
       rafRef.current = requestAnimationFrame(scanLoop);
 
     } else {
-      // ── iOS Safari / Firefox: Html5Qrcode ─────────────────────────────
-      // Container is always in DOM with visibility:hidden so h5q can measure it.
-      // We switch to visible only after start() succeeds.
-      setUsingH5q(true);
-      // Two rAF ticks to let React flush + browser layout
-      await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-
+      // ── iOS / Firefox: ZXing BrowserMultiFormatReader ─────────────────
+      // Most reliable cross-browser fallback — scans all formats continuously
       try {
-        const { Html5Qrcode } = await import("html5-qrcode");
-        const scanner = new Html5Qrcode(cid, { formatsToSupport: H5Q_ALL_FORMATS, verbose: false } as any);
-        h5qRef.current = scanner;
+        const { BrowserMultiFormatReader } = await import("@zxing/browser");
+        const reader = new BrowserMultiFormatReader();
 
-        await scanner.start(
-          { facingMode: "environment" },
-          { fps: 15 }, // no qrbox → scan the entire frame
-          (text: string, result: any) => {
+        const controls = await reader.decodeFromConstraints(
+          { video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } },
+          videoRef.current!,
+          (result: any, err: any) => {
             if (!activeRef.current) return;
-            activeRef.current = false;
-            stopAll();
-            onScanSuccess(text, result?.result?.format?.formatName ?? "unknown");
-          },
-          () => {} // per-frame miss — ignore
+            if (result) {
+              activeRef.current = false;
+              const fmt = result.getBarcodeFormat?.()?.toString() ?? "unknown";
+              stopAll();
+              onScanSuccess(result.getText(), fmt);
+            }
+          }
         );
-
-        // Fix h5q's generated DOM so the video fills our container
-        const dash = document.getElementById(`${cid}__dashboard`);
-        if (dash) dash.style.display = "none";
-        const region = document.getElementById(`${cid}__scan_region`);
-        if (region) region.setAttribute("style", "width:100%!important;height:100%!important;padding:0!important;margin:0!important;");
-        const vid = document.querySelector(`#${cid} video`) as HTMLVideoElement | null;
-        if (vid) vid.setAttribute("style", "width:100%!important;height:100%!important;object-fit:cover!important;position:absolute!important;inset:0!important;");
-
+        controlsRef.current = controls;
         setState("streaming");
       } catch (e: any) {
         activeRef.current = false;
-        setUsingH5q(false);
-        setState(/notallowed|denied/i.test(String(e)) ? "denied" : "no-camera");
+        setState(/notallowed|denied|permission/i.test(String(e)) ? "denied" : "no-camera");
         onScanError?.(String(e));
       }
     }
-  }, [cid, scanLoop, onScanError, stopAll, onScanSuccess]);
+  }, [scanLoop, onScanError, stopAll, onScanSuccess]);
 
   // Auto-start on mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,15 +139,23 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
     stopAll();
     setState("scanning-image");
     setImageError(null);
+
     try {
       if ("BarcodeDetector" in window) {
         const img = await createImageBitmap(file);
         let fmts: string[] = [...ALL_BD_FORMATS];
-        try { const s = await (window as any).BarcodeDetector.getSupportedFormats(); if (s.length) fmts = ALL_BD_FORMATS.filter(f => s.includes(f)); } catch {}
+        try {
+          const sup: string[] = await (window as any).BarcodeDetector.getSupportedFormats();
+          if (sup.length) fmts = ALL_BD_FORMATS.filter(f => sup.includes(f));
+        } catch {}
         const det = new (window as any).BarcodeDetector({ formats: fmts });
         const results = await det.detect(img);
-        if (results[0]) { setState("booting"); onScanSuccess(results[0].rawValue, results[0].format); e.target.value = ""; return; }
+        if (results[0]) {
+          setState("booting"); onScanSuccess(results[0].rawValue, results[0].format);
+          e.target.value = ""; return;
+        }
       }
+      // Fallback: html5-qrcode file scan
       const { Html5Qrcode } = await import("html5-qrcode");
       let el = document.getElementById("__bcs_tmp__");
       if (!el) {
@@ -189,39 +182,27 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
   return (
     <div className="relative w-full overflow-hidden rounded-2xl bg-black" style={{ aspectRatio: "4/3" }}>
 
-      {/* ── BarcodeDetector video (Chrome/Android) ── */}
+      {/* Video element — used by both BarcodeDetector and ZXing paths */}
       <video ref={videoRef} muted playsInline
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-          state === "streaming" && !usingH5q ? "opacity-100" : "opacity-0 pointer-events-none"
+          state === "streaming" ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
       />
 
-      {/* ── html5-qrcode container (iOS/Firefox) ──
-          Always in DOM with real layout dimensions (visibility:hidden not display:none)
-          so html5-qrcode can measure it before start(). */}
-      <div
-        id={cid}
-        className="absolute inset-0 w-full h-full overflow-hidden"
-        style={{ visibility: state === "streaming" && usingH5q ? "visible" : "hidden" }}
-      />
-
-      {/* ── Scan frame overlay (shown while streaming) ── */}
+      {/* Streaming overlay */}
       {state === "streaming" && (
         <>
-          {/* Semi-transparent vignette */}
           <div className="absolute inset-0 pointer-events-none" style={{
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.4) 100%)"
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, transparent 25%, transparent 75%, rgba(0,0,0,0.45) 100%)"
           }} />
 
           {/* Finder frame */}
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
             <div className="relative w-[78%] aspect-[3/2]">
-              {/* Corner brackets — green accent */}
               <span className="absolute top-0 left-0 w-7 h-7 border-t-[3px] border-l-[3px] border-[#6b8a4e] rounded-tl-md" />
               <span className="absolute top-0 right-0 w-7 h-7 border-t-[3px] border-r-[3px] border-[#6b8a4e] rounded-tr-md" />
               <span className="absolute bottom-0 left-0 w-7 h-7 border-b-[3px] border-l-[3px] border-[#6b8a4e] rounded-bl-md" />
               <span className="absolute bottom-0 right-0 w-7 h-7 border-b-[3px] border-r-[3px] border-[#6b8a4e] rounded-br-md" />
-              {/* Animated scan line */}
               <div className="absolute inset-x-0 h-px bg-[#6b8a4e] opacity-90 animate-[scanline_2s_ease-in-out_infinite]" />
             </div>
           </div>
@@ -229,18 +210,15 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
           {/* Bottom bar */}
           <div className="absolute bottom-0 left-0 right-0 px-4 py-3 bg-gradient-to-t from-black/60 to-transparent flex items-center justify-between">
             <p className="text-white/70 text-[11px] font-medium tracking-wide">Point at barcode or QR code</p>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm text-white text-[11px] font-semibold px-3 py-1.5 rounded-full border border-white/25 active:bg-white/25 transition-colors"
-            >
+            <button type="button" onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm text-white text-[11px] font-semibold px-3 py-1.5 rounded-full border border-white/25 active:bg-white/25 transition-colors">
               <ImagePlus className="h-3.5 w-3.5" /> Photo
             </button>
           </div>
         </>
       )}
 
-      {/* ── Booting / requesting ── */}
+      {/* Booting */}
       {state === "booting" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-900">
           <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
@@ -250,7 +228,7 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
         </div>
       )}
 
-      {/* ── Camera permission denied ── */}
+      {/* Denied */}
       {state === "denied" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-slate-900 p-6 text-center">
           <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
@@ -258,22 +236,20 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
           </div>
           <div>
             <p className="text-white font-semibold text-sm">Camera Access Blocked</p>
-            <p className="text-white/40 text-xs mt-1.5 leading-relaxed">Allow camera access in your browser settings, then tap Retry.</p>
+            <p className="text-white/40 text-xs mt-1.5 leading-relaxed">Allow camera in browser settings, then tap Retry.</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={startCamera}
-              className="flex items-center gap-1.5 bg-white/10 border border-white/15 text-white text-xs font-semibold px-4 py-2 rounded-full">
+            <button onClick={startCamera} className="flex items-center gap-1.5 bg-white/10 border border-white/15 text-white text-xs font-semibold px-4 py-2 rounded-full">
               <RefreshCw className="h-3.5 w-3.5" /> Retry
             </button>
-            <button onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-1.5 bg-[#6b8a4e] text-white text-xs font-semibold px-4 py-2 rounded-full">
+            <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1.5 bg-[#6b8a4e] text-white text-xs font-semibold px-4 py-2 rounded-full">
               <ImagePlus className="h-3.5 w-3.5" /> Use Photo
             </button>
           </div>
         </div>
       )}
 
-      {/* ── No camera ── */}
+      {/* No camera */}
       {state === "no-camera" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-slate-900 p-6 text-center">
           <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
@@ -281,16 +257,14 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
           </div>
           <div>
             <p className="text-white font-semibold text-sm">Camera Unavailable</p>
-            <p className="text-white/40 text-xs mt-1.5 leading-relaxed">Another app may be using the camera. Close it and try again.</p>
+            <p className="text-white/40 text-xs mt-1.5 leading-relaxed">Close other apps using the camera, then tap Retry.</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={startCamera}
-              className="flex items-center gap-1.5 bg-white/10 border border-white/15 text-white text-xs font-semibold px-4 py-2 rounded-full">
+            <button onClick={startCamera} className="flex items-center gap-1.5 bg-white/10 border border-white/15 text-white text-xs font-semibold px-4 py-2 rounded-full">
               <RefreshCw className="h-3.5 w-3.5" /> Retry
             </button>
             {onFallback && (
-              <button onClick={onFallback}
-                className="flex items-center gap-1.5 bg-white/10 border border-white/15 text-white text-xs font-semibold px-4 py-2 rounded-full">
+              <button onClick={onFallback} className="flex items-center gap-1.5 bg-white/10 border border-white/15 text-white text-xs font-semibold px-4 py-2 rounded-full">
                 Manual Entry
               </button>
             )}
@@ -298,7 +272,7 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
         </div>
       )}
 
-      {/* ── Scanning photo ── */}
+      {/* Scanning photo */}
       {state === "scanning-image" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-900">
           <Loader2 className="h-8 w-8 text-[#6b8a4e] animate-spin" />
@@ -306,18 +280,16 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
         </div>
       )}
 
-      {/* ── Photo scan failed ── */}
+      {/* Photo error */}
       {state === "image-error" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-slate-900 p-6 text-center">
           <p className="text-white font-semibold text-sm">No Code Found</p>
           <p className="text-white/40 text-xs leading-relaxed">{imageError}</p>
           <div className="flex gap-2">
-            <button onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-1.5 bg-[#6b8a4e] text-white text-xs font-semibold px-4 py-2 rounded-full">
+            <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1.5 bg-[#6b8a4e] text-white text-xs font-semibold px-4 py-2 rounded-full">
               <ImagePlus className="h-3.5 w-3.5" /> Try Again
             </button>
-            <button onClick={startCamera}
-              className="flex items-center gap-1.5 bg-white/10 border border-white/15 text-white text-xs font-semibold px-4 py-2 rounded-full">
+            <button onClick={startCamera} className="flex items-center gap-1.5 bg-white/10 border border-white/15 text-white text-xs font-semibold px-4 py-2 rounded-full">
               Use Camera
             </button>
           </div>

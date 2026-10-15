@@ -129,7 +129,9 @@ export default function ScannerPage() {
       setScannedFormat(format ?? null);
       setSearchFeedback(rawDisplay);
       setQuickCreate({ barcode: rawDisplay, name: "" });
-      setActionMessage({ text: `Not found: "${rawDisplay}"${fmtLabel} — register it below`, type: "error" });
+      // Immediately open the full product registration modal
+      openAddModal(rawDisplay);
+      setActionMessage({ text: `New barcode "${rawDisplay}"${fmtLabel} — fill in product details`, type: "error" });
     }
   };
 
@@ -843,8 +845,10 @@ export default function ScannerPage() {
       </Modal>
 
       {/* Add New Product Modal */}
-      <Modal isOpen={addOpen} onClose={() => setAddOpen(false)}
-        title="Add New Product" description="Register a new product. Scan or type the barcode." size="lg">
+      <Modal isOpen={addOpen} onClose={() => { setAddOpen(false); setQuickCreate(null); }}
+        title={quickCreate ? `Register Barcode: ${quickCreate.barcode}` : "Add New Product"}
+        description={quickCreate ? "This barcode isn't in the system yet. Fill in the product details to register it." : "Register a new product. Scan or type the barcode."}
+        size="lg">
         <form onSubmit={handleAddProduct} className="space-y-4">
           <div>
             <div className="flex items-center justify-between mb-1">
