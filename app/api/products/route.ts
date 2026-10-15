@@ -134,17 +134,16 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     if (error?.code === "P2002") {
-      // Duplicate barcode or SKU — find and return the existing product so the UI can show it
-      try {
-        const orClauses: any[] = [];
-        if (body.barcode) orClauses.push({ barcode: body.barcode });
-        if (body.sku) orClauses.push({ sku: body.sku });
-        const found = orClauses.length
-          ? await findProductFull({ OR: orClauses })
-          : null;
-        if (found) return NextResponse.json(found, { status: 200 });
-      } catch {}
-      return NextResponse.json({ error: "A product with this barcode or SKU already exists." }, { status: 409 });
+      // Only return existing product when the duplicate is on barcode (not SKU collision)
+      const dupFields: string[] = error?.meta?.target ?? [];
+      if (dupFields.includes("barcode") && body.barcode) {
+        try {
+          const found = await findProductFull({ barcode: body.barcode });
+          if (found) return NextResponse.json(found, { status: 200 });
+        } catch {}
+      }
+      // SKU collision or barcode lookup failed — tell the frontend to retry with a new SKU
+      return NextResponse.json({ error: "duplicate_sku", field: dupFields[0] ?? "sku" }, { status: 409 });
     }
     console.error("POST /api/products error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

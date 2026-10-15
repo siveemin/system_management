@@ -196,25 +196,37 @@ export default function ScannerPage() {
     e.preventDefault();
     if (!addForm.name.trim()) return;
     const cat = categories.find((c) => c.id === addForm.categoryId);
-    const sup = suppliers.find((s) => s.id === addForm.supplierId);
-    const res = await fetch("/api/products", {
+    const freshSku = generateSKU("SKU", cat?.name ?? "");
+    const payload = {
+      name: addForm.name.trim(),
+      sku: addForm.sku || freshSku,
+      barcode: addForm.barcode || generateBarcode(),
+      qrCode: addForm.barcode || null,
+      uom: addForm.uom,
+      costPrice: addForm.costPrice,
+      sellingPrice: addForm.sellingPrice,
+      minStockLevel: 10,
+      maxStockLevel: 500,
+      categoryId: addForm.categoryId || null,
+      supplierId: addForm.supplierId || null,
+      status: "ACTIVE",
+    };
+    let res = await fetch("/api/products", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: addForm.name.trim(),
-        sku: addForm.sku || generateSKU("SKU", cat?.name ?? ""),
-        barcode: addForm.barcode || generateBarcode(),
-        qrCode: addForm.barcode || null,
-        uom: addForm.uom,
-        costPrice: addForm.costPrice,
-        sellingPrice: addForm.sellingPrice,
-        minStockLevel: 10,
-        maxStockLevel: 500,
-        categoryId: addForm.categoryId || null,
-        supplierId: addForm.supplierId || null,
-        status: "ACTIVE",
-      }),
+      body: JSON.stringify(payload),
     });
+    // Auto-retry once with a fresh SKU if there was a SKU collision
+    if (res.status === 409) {
+      const errBody = await res.json().catch(() => ({}));
+      if (errBody?.field === "sku" || errBody?.error === "duplicate_sku") {
+        res = await fetch("/api/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, sku: generateSKU("SKU", cat?.name ?? "") }),
+        });
+      }
+    }
     if (res.ok) {
       const newProduct = await res.json();
       await load();
@@ -222,10 +234,11 @@ export default function ScannerPage() {
       setQuickCreate(null);
       setScannedProduct(newProduct);
       setScanTime(new Date());
-      setActionMessage({ text: `✓ ${newProduct.name}`, type: "success" });
+      setActionMessage({ text: `✓ ${newProduct.name} saved`, type: "success" });
       setTimeout(() => resultAreaRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80);
-    } else if (res.status === 409) {
-      setActionMessage({ text: "A product with this barcode already exists — check the product list.", type: "error" });
+    } else {
+      const errBody = await res.json().catch(() => ({}));
+      setActionMessage({ text: errBody?.error || "Failed to save product — please try again.", type: "error" });
     }
   };
 

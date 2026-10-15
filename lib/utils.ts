@@ -58,8 +58,9 @@ export function formatDateTime(date: Date | string | null | undefined): string {
 
 export function generateSKU(prefix = "SKU", categoryName = ""): string {
   const catCode = categoryName ? categoryName.slice(0, 3).toUpperCase() : "GEN";
-  const randomNum = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${catCode}-${randomNum}`;
+  const timeCode = Date.now().toString(36).slice(-4).toUpperCase();
+  const rand = Math.floor(100 + Math.random() * 900);
+  return `${prefix}-${catCode}-${timeCode}${rand}`;
 }
 
 export function generateBarcode(): string {
