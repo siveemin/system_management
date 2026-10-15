@@ -3,49 +3,53 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #edf2ed;
-  --foreground: #1e2e14;
-  --card: #ffffff;
-  --card-foreground: #1e2e14;
-  --popover: #ffffff;
-  --popover-foreground: #1e2e14;
-  --primary: #6b8a4e;
-  --primary-foreground: #ffffff;
-  --secondary: #dceadc;
-  --secondary-foreground: #1e2e14;
-  --muted: #edf2ed;
-  --muted-foreground: #5a7040;
-  --accent: #c85a7e;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #d4ddd4;
-  --input: #d4ddd4;
-  --ring: #6b8a4e;
-  --radius: 1rem;
+  --background: #F7F3EE;
+  --foreground: #1A150E;
+  --card: #FFFFFF;
+  --card-foreground: #1A150E;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A150E;
+  --primary: #4D7A32;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EBF0E4;
+  --secondary-foreground: #1A150E;
+  --muted: #F0EBE3;
+  --muted-foreground: #7A7268;
+  --accent: #6B8A4E;
+  --accent-foreground: #FFFFFF;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: #E6DDD2;
+  --input: #E6DDD2;
+  --ring: #4D7A32;
+  --radius: 0.875rem;
 }
 
 .dark {
-  --background: #0f1a08;
-  --foreground: #e8f0e2;
-  --card: #1a2410;
-  --card-foreground: #e8f0e2;
-  --popover: #1a2410;
-  --popover-foreground: #e8f0e2;
-  --primary: #7aaa5c;
-  --primary-foreground: #0f1a08;
-  --secondary: #2a3d1a;
-  --secondary-foreground: #e8f0e2;
-  --muted: #1a2a10;
-  --muted-foreground: #8aaa6e;
-  --border: #2a3d20;
-  --input: #2a3d20;
-  --ring: #7aaa5c;
+  --background: #0E1A08;
+  --foreground: #E8F0E0;
+  --card: #172110;
+  --card-foreground: #E8F0E0;
+  --popover: #172110;
+  --popover-foreground: #E8F0E0;
+  --primary: #6BA84A;
+  --primary-foreground: #0E1A08;
+  --secondary: #243318;
+  --secondary-foreground: #E8F0E0;
+  --muted: #1C2A12;
+  --muted-foreground: #8BA882;
+  --accent: #6B8A4E;
+  --accent-foreground: #FFFFFF;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #2A3D1C;
+  --input: #2A3D1C;
+  --ring: #6BA84A;
 }
 
 .dark body {
-  background-color: #0f1a08;
-  color: #e8f0e2;
+  background-color: #0E1A08;
+  color: #E8F0E0;
 }
 
 * {
@@ -81,8 +85,8 @@ button:active, a:active, [role="button"]:active {
 }
 
 body {
-  background-color: #edf2ed;
-  color: #1e2e14;
+  background-color: #F7F3EE;
+  color: #1A150E;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   min-height: 100vh;
   letter-spacing: -0.015em;

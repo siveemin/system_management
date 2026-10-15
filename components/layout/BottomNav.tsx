@@ -11,7 +11,7 @@ export function BottomNav() {
   const { t } = useTranslation();
 
   const NAV = [
-    { label: t("nav_dashboard"),        href: "/",               icon: Store        },
+    { label: t("nav_dashboard"),        href: "/",                icon: Store        },
     { label: t("page_po_title"),        href: "/purchase-orders", icon: ClipboardList },
     { label: t("page_customers_title"), href: "/customers",       icon: Users        },
     { label: t("nav_scanner"),          href: "/scanner",         icon: ScanBarcode  },
@@ -19,20 +19,27 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 bg-[#6b8a4e] flex items-center justify-around px-2" style={{ height: 64, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+    <nav
+      className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-[#E6DDD2] flex items-center justify-around px-2 lg:hidden"
+      style={{ height: 64, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    >
       {NAV.map((item) => {
         const Icon = item.icon;
-        const isActive =
+        const isItemActive =
           item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         return (
           <Link
             key={item.href}
             href={item.href}
             className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-2 transition-all select-none active:scale-95 ${
-              isActive ? "text-white" : "text-[#b8d4a0] hover:text-white"
+              isItemActive ? "text-[#4D7A32]" : "text-[#9A9288] hover:text-[#4D7A32]"
             }`}
           >
-            <div className={`p-1.5 rounded-xl transition-colors ${isActive ? "bg-white/20" : ""}`}>
+            <div
+              className={`p-1.5 rounded-xl transition-colors ${
+                isItemActive ? "bg-[#4D7A32]/10" : ""
+              }`}
+            >
               <Icon className="h-5 w-5" />
             </div>
             <span className="text-[10px] font-semibold">{item.label}</span>

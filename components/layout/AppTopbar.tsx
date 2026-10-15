@@ -62,55 +62,58 @@ export function AppTopbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between px-4 bg-[#edf2ed] border-b border-[#d4ddd4]">
+      <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between px-4 bg-[#F7F3EE] shadow-sm">
         {/* Left: hamburger + logo */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => drawerState.toggle()}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-[#3d5a2a] hover:bg-[#d4e8d4] transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-[#4D7A32] hover:bg-[#E6DDD2] transition-colors"
             aria-label="Menu"
           >
             {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
 
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#6b8a4e] text-white font-black text-base shadow-sm">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#4D7A32] text-white font-black text-base shadow-sm">
               {sysName.charAt(0).toUpperCase()}
             </div>
             <div className="flex flex-col leading-none">
-              <span className="text-sm font-bold text-[#1e2e14]">{sysName}</span>
-              <span className="text-[11px] text-[#6b8a4e] font-medium">{sysSub}</span>
+              <span className="text-sm font-bold text-[#1A150E]">{sysName}</span>
+              <span className="text-[11px] text-[#4D7A32] font-medium">{sysSub}</span>
             </div>
           </Link>
         </div>
 
+        {/* Center: search pill (sm+) */}
+        <button
+          onClick={() => setSearchOpen(true)}
+          className="hidden sm:flex items-center gap-2 h-9 px-3.5 rounded-xl bg-white border border-[#E6DDD2] text-[#7A7268] hover:border-[#4D7A32] hover:text-[#4D7A32] transition-all shadow-sm text-xs font-medium"
+        >
+          <Search className="h-3.5 w-3.5 shrink-0" />
+          <span>Search products…</span>
+          <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[#F0EBE3] border border-[#E6DDD2] text-[10px] font-bold text-[#7A7268] hidden md:block">⌘K</kbd>
+        </button>
+
         {/* Right: icons */}
         <div className="flex items-center gap-1">
+          {/* Mobile search icon */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="hidden sm:flex items-center gap-2 h-9 px-3.5 rounded-xl bg-white dark:bg-[#1a2410] border border-[#c8d8c0] dark:border-[#2d4020] text-slate-400 hover:border-[#6b8a4e] hover:text-[#6b8a4e] transition-all shadow-xs text-xs font-medium"
-          >
-            <Search className="h-3.5 w-3.5 shrink-0" />
-            <span>Search…</span>
-            <kbd className="ml-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-400 hidden md:block">⌘K</kbd>
-          </button>
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="flex sm:hidden h-9 w-9 items-center justify-center rounded-xl text-[#5a7040] hover:bg-[#d4e8d4] transition-colors"
+            className="flex sm:hidden h-9 w-9 items-center justify-center rounded-xl text-[#4D7A32] hover:bg-[#E6DDD2] transition-colors"
           >
             <Search className="h-5 w-5" />
           </button>
 
           <button
             onClick={toggleDark}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-[#5a7040] hover:bg-[#d4e8d4] dark:text-[#8aaa6e] dark:hover:bg-[#1a2a10] transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-[#4D7A32] hover:bg-[#E6DDD2] dark:text-[#8BA882] dark:hover:bg-[#1C2A12] transition-colors"
           >
             {isDark ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
           </button>
 
           <button
             onClick={toggleLang}
-            className="h-9 px-3 rounded-xl text-xs font-bold border-2 border-[#6b8a4e] text-[#6b8a4e] bg-white hover:bg-[#6b8a4e] hover:text-white dark:bg-transparent dark:text-[#8aaa6e] dark:border-[#8aaa6e] dark:hover:bg-[#8aaa6e] dark:hover:text-white transition-colors flex items-center gap-1"
+            className="h-9 px-3 rounded-xl text-xs font-bold border-2 border-[#4D7A32] text-[#4D7A32] bg-white hover:bg-[#4D7A32] hover:text-white dark:bg-transparent dark:text-[#8BA882] dark:border-[#8BA882] dark:hover:bg-[#8BA882] dark:hover:text-white transition-colors flex items-center gap-1"
             title={lang === "en" ? "Switch to ខ្មែរ" : "Switch to English"}
           >
             {lang === "en" ? (
