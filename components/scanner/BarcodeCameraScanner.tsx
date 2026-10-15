@@ -163,9 +163,10 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
         } as any);
         h5qRef.current = scanner;
 
+        const cid = containerIdRef.current;
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 15, qrbox: { width: 250, height: 160 }, aspectRatio: 1.0 },
+          { fps: 15 }, // no qrbox — scan the full video frame
           (decodedText: string, result: any) => {
             if (!activeRef.current) return;
             const fmt: string = result?.result?.format?.formatName ?? "unknown";
@@ -175,6 +176,25 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
           },
           () => {} // per-frame decode error — ignore
         );
+
+        // Fix h5q-generated DOM: hide its dashboard, make video fill container
+        const dash = document.getElementById(`${cid}__dashboard`);
+        if (dash) dash.style.display = "none";
+        const scanRegion = document.getElementById(`${cid}__scan_region`);
+        if (scanRegion) {
+          scanRegion.style.width = "100%";
+          scanRegion.style.height = "100%";
+          scanRegion.style.paddingBottom = "0";
+        }
+        const vid = document.querySelector(`#${cid} video`) as HTMLVideoElement | null;
+        if (vid) {
+          vid.style.width = "100%";
+          vid.style.height = "100%";
+          vid.style.objectFit = "cover";
+          vid.style.position = "absolute";
+          vid.style.inset = "0";
+        }
+
         setState("streaming");
       } catch (err: any) {
         const msg = `${err?.name ?? ""} ${err?.message ?? ""}`.toLowerCase();
@@ -263,12 +283,10 @@ export function BarcodeCameraScanner({ onScanSuccess, onScanError, onFallback }:
           }`}
         />
 
-        {/* html5-qrcode path — iOS Safari / Firefox
-            The library renders its own <video> inside this div.
-            Tailwind arbitrary variants force the video to fill the container. */}
+        {/* html5-qrcode container — iOS Safari / Firefox */}
         <div
           id={containerIdRef.current}
-          className="absolute inset-0 w-full h-full overflow-hidden [&_video]:!absolute [&_video]:!inset-0 [&_video]:!w-full [&_video]:!h-full [&_video]:!object-cover [&_img]:!hidden [&_section]:!hidden [&_button]:!hidden"
+          className="absolute inset-0 w-full h-full overflow-hidden bg-black"
           style={{ display: usingH5q ? "block" : "none" }}
         />
 
